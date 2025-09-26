@@ -1,0 +1,10 @@
+{
+  "auditLevel": "moderate",
+  "output": "summary",
+  "whitelist": [],
+  "advisories": [],
+  "report-type": "summary",
+  "allowlist": [],
+  "skip-dev": false,
+  "production": false
+}

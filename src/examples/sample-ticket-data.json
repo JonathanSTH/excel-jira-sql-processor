@@ -1,0 +1,66 @@
+{
+  "sampleTickets": [
+    {
+      "key": "PROJ-123",
+      "summary": "Update STaxCodeLocalJurisdication",
+      "description": "Please update the STaxCodeLocalJurisdiction table per updates made on the EftCreditAndLocalJurisdiction.xlsx shared file. Thank you!\n\nAdded:\nOH-VIO3\nOH-VIO4\n\nUpdates:\nOH-CAN2/OH-CAN5 - TaxColector updated to Regional Income Tax Agency",
+      "status": "In Progress",
+      "assignee": "John Doe",
+      "priority": "High",
+      "created": "2024-01-15T10:00:00.000Z",
+      "updated": "2024-01-15T14:30:00.000Z"
+    },
+    {
+      "key": "PROJ-124",
+      "summary": "Update Tax Table for New Jurisdictions",
+      "description": "Update the sTaxTable in escher schema with new tax codes:\n\nAdded:\nTX-AUS1\nTX-AUS2\nTX-AUS3\n\nValues to update:\n0.025\n0.030\n0.035\n\nReference file: TaxUpdates2024.xlsx",
+      "status": "To Do",
+      "assignee": "Jane Smith",
+      "priority": "Medium",
+      "created": "2024-01-16T09:00:00.000Z",
+      "updated": "2024-01-16T09:00:00.000Z"
+    },
+    {
+      "key": "PROJ-125",
+      "summary": "Fix Tax Collector Names",
+      "description": "Update tax collector names in the tax table:\n\nUpdates:\nCA-LAX1 - TaxCollector changed to Los Angeles Tax Authority\nCA-SFO1 - TaxCollector changed to San Francisco Revenue Department\nCA-SAC1 - TaxCollector changed to Sacramento County Tax Office\n\nReference: CaliforniaTaxUpdates.xlsx",
+      "status": "Done",
+      "assignee": "Mike Johnson",
+      "priority": "Low",
+      "created": "2024-01-17T11:00:00.000Z",
+      "updated": "2024-01-17T16:45:00.000Z"
+    }
+  ],
+  "sampleExcelData": {
+    "EftCreditAndLocalJurisdiction.xlsx": [
+      {
+        "tCode": "OH-VIO3",
+        "taxRate": "0.023",
+        "taxCollector": "Ohio Department of Taxation",
+        "jurisdiction": "Ohio",
+        "effectiveDate": "2024-01-01"
+      },
+      {
+        "tCode": "OH-VIO4",
+        "taxRate": "0.025",
+        "taxCollector": "Ohio Department of Taxation",
+        "jurisdiction": "Ohio",
+        "effectiveDate": "2024-01-01"
+      },
+      {
+        "tCode": "OH-CAN2",
+        "taxRate": "0.020",
+        "taxCollector": "Regional Income Tax Agency",
+        "jurisdiction": "Ohio",
+        "effectiveDate": "2024-01-01"
+      },
+      {
+        "tCode": "OH-CAN5",
+        "taxRate": "0.022",
+        "taxCollector": "Regional Income Tax Agency",
+        "jurisdiction": "Ohio",
+        "effectiveDate": "2024-01-01"
+      }
+    ]
+  }
+}
