@@ -202,11 +202,19 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
       fileContent += "\n";
     });
 
-    // Write to file
+    // Write to file in the sprintData/fetched directory
     const filename = `wtci-sprint-tickets-${
       new Date().toISOString().split("T")[0]
     }.txt`;
-    fs.writeFileSync(filename, fileContent, "utf8");
+
+    // Ensure the directory exists
+    const dir = "./sprintData/fetched";
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const filepath = `${dir}/${filename}`;
+    fs.writeFileSync(filepath, fileContent, "utf8");
 
     console.log(`\n📊 Tickets grouped by Status:`);
     console.log("=".repeat(80));
@@ -218,7 +226,7 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
       });
     });
 
-    console.log(`\n✅ Report saved to: ${filename}`);
+    console.log(`\n✅ Report saved to: ${filepath}`);
   } catch (error) {
     console.error("❌ Error:", error.response?.data || error.message);
   }

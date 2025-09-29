@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIRA-SQL Validation Wizard - Dice Layout</title>
+    <link rel="stylesheet" href="styles-dice.css">
+</head>
+
+<body>
+    <div class="cube-container">
+        <div class="cube show-front" id="cube">
+            <!-- Front Face - Welcome/Home -->
+            <div class="cube-face front">
+                <div class="face-title">JIRA-SQL Validation Wizard</div>
+                <div class="face-content">
+                    <div class="option-cards">
+                        <div class="option-card" id="fetch-sprint-option">
+                            <div class="option-icon">🚀</div>
+                            <div class="option-title">Fetch New Sprint</div>
+                            <div class="option-description">Connect to JIRA and retrieve the latest sprint tickets</div>
+                            <div class="option-features">
+                                <span class="feature-tag">Real-time</span>
+                                <span class="feature-tag">Latest Data</span>
+                            </div>
+                            <div class="option-action">
+                                <span class="action-text">Start Fetching</span>
+                            </div>
+                        </div>
+
+                        <div class="option-card" id="load-existing-option">
+                            <div class="option-icon">📁</div>
+                            <div class="option-title">Load Existing Data</div>
+                            <div class="option-description">Load previously saved ticket information from local files
+                            </div>
+                            <div class="option-features">
+                                <span class="feature-tag">Fast</span>
+                                <span class="feature-tag">Offline</span>
+                            </div>
+                            <div class="option-action">
+                                <span class="action-text">Load Data</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="rotateCube('bottom')">
+                        Help & Settings ↓
+                    </button>
+                </div>
+            </div>
+
+            <!-- Back Face - Loading Existing Data -->
+            <div class="cube-face back">
+                <div class="face-title">Loading Existing Data</div>
+                <div class="face-content" id="load-existing-content">
+                    <div class="load-existing-content">
+                        <div class="data-animation-container">
+                            <div class="data-packets">
+                                <div class="packet packet-1"></div>
+                                <div class="packet packet-2"></div>
+                                <div class="packet packet-3"></div>
+                                <div class="packet packet-4"></div>
+                                <div class="packet packet-5"></div>
+                                <div class="packet packet-6"></div>
+                            </div>
+                            <div class="data-flow-lines">
+                                <div class="flow-line line-1"></div>
+                                <div class="flow-line line-2"></div>
+                                <div class="flow-line line-3"></div>
+                            </div>
+                        </div>
+                        <div class="status-container">
+                            <div class="status-text" id="load-status">Reading local files...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" id="back-btn" onclick="rotateCube('front')">← Home</button>
+                    <button class="nav-btn" id="next-btn" onclick="rotateCube('right')">Validate →</button>
+                    <button class="nav-btn" onclick="rotateCube('left')">← Results</button>
+                </div>
+            </div>
+
+            <!-- Right Face - Validation Process -->
+            <div class="cube-face right">
+                <div class="icon">🔍</div>
+                <div class="face-title">Validation Process</div>
+                <div class="face-content">
+                    <div class="validation-content">
+                        <p>Ready to validate your sprint data against SQL Server.</p>
+                        <p>This process will check each ticket's requirements against the database.</p>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" id="run-validation-btn">Run Validation ↑</button>
+                    <button class="nav-btn" onclick="rotateCube('back')">← Review</button>
+                    <button class="nav-btn" onclick="rotateCube('left')">Results →</button>
+                </div>
+            </div>
+
+            <!-- Left Face - Results -->
+            <div class="cube-face left">
+                <div class="icon">📊</div>
+                <div class="face-title">Validation Results</div>
+                <div class="face-content" id="validation-results-content">
+                    <div class="results-summary">
+                        <p>Validation results will appear here after running the process.</p>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="rotateCube('right')">← Validate</button>
+                    <button class="nav-btn" onclick="exportResults()">Export Results</button>
+                    <button class="nav-btn" onclick="rotateCube('front')">Home</button>
+                </div>
+            </div>
+
+            <!-- Top Face - Sprint Data Fetched -->
+            <div class="cube-face top">
+                <div class="face-title">Sprint Data Fetched</div>
+                <div class="face-content" id="sprint-fetch-content">
+                    <div class="sprint-fetch-content">
+                        <div class="fetch-summary">
+                            <h4>Fetching Sprint Data...</h4>
+                            <p>Connecting to JIRA and retrieving latest tickets</p>
+                        </div>
+                        <div class="completion-stats">
+                            <div class="stat-item loading">
+                                <span class="stat-number loading-number" id="tickets-count">--</span>
+                                <span class="stat-label">Tickets Found</span>
+                                <div class="loading-bar"></div>
+                            </div>
+                            <div class="stat-item loading">
+                                <span class="stat-number loading-text" id="sprint-status">Connecting...</span>
+                                <span class="stat-label">Sprint Status</span>
+                                <div class="loading-bar"></div>
+                            </div>
+                            <div class="stat-item loading">
+                                <span class="stat-number loading-percentage" id="data-complete">0%</span>
+                                <span class="stat-label">Data Complete</span>
+                                <div class="loading-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="rotateCube('front')">← Home</button>
+                    <button class="nav-btn" onclick="rotateCube('back')">Review ↓</button>
+                    <button class="nav-btn" onclick="rotateCube('right')">Validate →</button>
+                </div>
+            </div>
+
+            <!-- Bottom Face - Settings & Help -->
+            <div class="cube-face bottom">
+                <div class="icon">⚙️</div>
+                <div class="face-title">Settings & Help</div>
+                <div class="face-content">
+                    <div class="settings-content">
+                        <h4>Configuration</h4>
+                        <p>JIRA Server: Configured</p>
+                        <p>SQL Server: Configured</p>
+                        <p>Data Directory: ./jira-data/</p>
+
+                        <h4>Help</h4>
+                        <p>Use the navigation buttons to move between steps.</p>
+                        <p>Start by fetching new sprint data or loading existing data.</p>
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="rotateCube('front')">← Home</button>
+                    <button class="nav-btn" onclick="rotateCube('top')">Fetch Data ↑</button>
+                    <button class="nav-btn" onclick="rotateCube('back')">Load Data ↓</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app-dice.js"></script>
+</body>
+
+</html>
