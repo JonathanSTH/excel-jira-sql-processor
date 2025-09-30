@@ -84,6 +84,7 @@ class ValidationWizard {
     });
 
     document.getElementById("use-real-data").addEventListener("click", () => {
+      console.log("Use real data button clicked");
       this.hideDataSourceModal();
       this.fetchCurrentSprint(false); // false for real data
     });
@@ -213,17 +214,26 @@ class ValidationWizard {
         };
       } else {
         // Use real data - call the JIRA API script
+        console.log("Using real data - calling fetchRealSprintData()");
         try {
           const response = await this.fetchRealSprintData();
+          console.log("Real data response:", response);
           this.sprintData = response;
 
           // Check if data already exists in workflow
+          console.log(
+            "Checking if data already exists in workflow:",
+            this.sprintData.fileInfo
+          );
           if (
             this.sprintData.fileInfo &&
             this.sprintData.fileInfo.existingInWorkflow
           ) {
+            console.log("Data already exists in workflow, showing modal");
             this.showDataAlreadyExistsModal(this.sprintData);
             return;
+          } else {
+            console.log("Data does not exist in workflow, proceeding normally");
           }
 
           // Check if file comparison is needed
@@ -236,7 +246,8 @@ class ValidationWizard {
             if (comparison.action === "identical") {
               // Files are identical, proceed to next step
               console.log("Files are identical, proceeding to next step");
-              this.proceedToNextStep();
+              this.displaySprintSummary();
+              this.goToStep(2);
               return;
             } else if (comparison.action === "different") {
               // Files are different, show comparison modal
@@ -309,32 +320,48 @@ class ValidationWizard {
 
     try {
       // Check for existing sprint files in inProgress folder
-      const response = await fetch("/api/sprint-files");
+      // Use correct endpoint; make parsing resilient to shape differences
+      const response = await fetch("/api/check-existing-files");
       const data = await response.json();
 
-      if (data.files && data.files.length > 1) {
+      // Normalize potential shapes
+      const files = Array.isArray(data?.files)
+        ? data.files
+        : Array.isArray(data?.inProgress)
+        ? data.inProgress
+        : Array.isArray(data?.fetched)
+        ? data.fetched
+        : [];
+
+      if (files && files.length > 1) {
         // Multiple files exist - show sprint selector
         existingDataCard.classList.remove("disabled");
         existingDataCard.classList.add("enabled");
-        statusText.textContent = `${data.files.length} sprints available`;
-        this.availableSprintFiles = data.files;
+        statusText.textContent = `${files.length} sprints available`;
+        this.availableSprintFiles = files;
         console.log(
-          `✅ Found ${data.files.length} sprint files - Sprint selector enabled`
+          `✅ Found ${files.length} sprint files - Sprint selector enabled`
         );
-      } else if (data.files && data.files.length === 1) {
+      } else if (files && files.length === 1) {
         // Single file exists
         existingDataCard.classList.remove("disabled");
         existingDataCard.classList.add("enabled");
         statusText.textContent = "Click to load";
-        this.availableSprintFiles = data.files;
+        this.availableSprintFiles = files;
         console.log("✅ Found 1 sprint file - Load Existing Data enabled");
-      } else {
+      } else if (data?.exists === false || files.length === 0) {
         // No files exist
         existingDataCard.classList.add("disabled");
         existingDataCard.classList.remove("enabled");
         statusText.textContent = "No Data File Found";
         statusText.style.color = "var(--accent-danger)";
         console.log("❌ No sprint files found - Load Existing Data disabled");
+      } else if (data?.exists === true) {
+        // Some backends may only return a boolean flag
+        existingDataCard.classList.remove("disabled");
+        existingDataCard.classList.add("enabled");
+        statusText.textContent = "Click to load";
+        console.log("✅ Existing data detected - Load Existing Data enabled");
       }
     } catch (error) {
       console.error("Error checking existing data files:", error);
@@ -805,8 +832,14 @@ Total Tickets: 4
 
   showDataSourceModal() {
     const modal = document.getElementById("data-source-modal");
-    modal.style.display = "flex";
-    document.body.style.overflow = "hidden"; // Prevent background scrolling
+    console.log("showDataSourceModal called, modal:", modal);
+    if (modal) {
+      modal.style.display = "flex";
+      document.body.style.overflow = "hidden"; // Prevent background scrolling
+      console.log("Modal display set to flex");
+    } else {
+      console.error("Data source modal not found!");
+    }
   }
 
   showSprintSelectorModal() {
@@ -966,9 +999,11 @@ Total Tickets: 4
   }
 
   showDataAlreadyExistsModal(sprintData) {
+    console.log("showDataAlreadyExistsModal called with:", sprintData);
     // Create or update the data already exists modal
     let modal = document.getElementById("data-already-exists-modal");
     if (!modal) {
+      console.log("Creating new data already exists modal");
       modal = this.createDataAlreadyExistsModal();
       document.body.appendChild(modal);
     }
@@ -985,6 +1020,7 @@ Total Tickets: 4
     // Show the modal
     modal.style.display = "flex";
     document.body.style.overflow = "hidden"; // Prevent scrolling
+    console.log("Data already exists modal shown");
 
     // Reset wizard to first step
     this.resetWizard();
@@ -1025,27 +1061,31 @@ Total Tickets: 4
     // Add event listeners
     modal.querySelector("#data-exists-close").addEventListener("click", () => {
       this.hideDataAlreadyExistsModal();
+      this.resetWizard();
     });
 
     modal
       .querySelector("#data-exists-continue")
       .addEventListener("click", () => {
         this.hideDataAlreadyExistsModal();
-        // User chooses to continue with existing data - do nothing
+        // User chooses to continue with existing data - proceed to step 2
+        this.continueWithExistingData();
       });
 
     modal
       .querySelector("#data-exists-fetch-new")
       .addEventListener("click", () => {
+        console.log("Fetch fresh data button clicked");
         this.hideDataAlreadyExistsModal();
         // User wants to fetch fresh data - restart the process
-        this.showDataSourceModal();
+        this.fetchFreshData();
       });
 
     // Close on overlay click
     modal.addEventListener("click", (e) => {
       if (e.target === modal) {
         this.hideDataAlreadyExistsModal();
+        this.resetWizard();
       }
     });
 
@@ -1060,19 +1100,38 @@ Total Tickets: 4
     }
   }
 
+  continueWithExistingData() {
+    // User chose to continue with existing data
+    // Display the sprint summary and proceed to step 2
+    console.log("Continuing with existing data");
+    this.displaySprintSummary();
+    this.goToStep(2);
+  }
+
+  fetchFreshData() {
+    // User chose to fetch fresh data
+    // Reset the wizard and show data source modal
+    console.log("fetchFreshData() called");
+    this.resetWizard();
+    console.log("resetWizard() completed");
+    this.showDataSourceModal();
+    console.log("showDataSourceModal() completed");
+  }
+
   resetWizard() {
     // Reset to first step
     this.currentStep = 1;
     this.sprintData = null;
 
-    // Hide all steps
-    const steps = document.querySelectorAll(".step");
-    steps.forEach((step) => (step.style.display = "none"));
+    // Hide all steps using the same method as goToStep
+    document.querySelectorAll(".wizard-step").forEach((step) => {
+      step.classList.remove("active");
+    });
 
     // Show first step
     const firstStep = document.getElementById("step-1");
     if (firstStep) {
-      firstStep.style.display = "block";
+      firstStep.classList.add("active");
     }
 
     // Reset progress
@@ -1080,6 +1139,31 @@ Total Tickets: 4
 
     // Clear any existing data
     this.clearSprintData();
+  }
+
+  clearSprintData() {
+    // Clear sprint data and reset UI elements
+    this.sprintData = null;
+    this.ticketsData = null;
+    this.validationResults = null;
+
+    // Clear sprint summary
+    const sprintSummary = document.getElementById("sprint-summary");
+    if (sprintSummary) {
+      sprintSummary.innerHTML = "";
+    }
+
+    // Clear tickets container
+    const ticketsContainer = document.getElementById("tickets-container");
+    if (ticketsContainer) {
+      ticketsContainer.innerHTML = "";
+    }
+
+    // Clear results container
+    const resultsContainer = document.getElementById("results-container");
+    if (resultsContainer) {
+      resultsContainer.innerHTML = "";
+    }
   }
 
   async checkExistingFiles(filename) {
@@ -1677,12 +1761,12 @@ Total Tickets: 4
       const data = await response.json();
       console.log("✅ Real sprint data received:", data);
 
-      // Parse the file content to extract sprint data
-      if (data.success && data.data) {
-        const parsedData = this.parseJiraDataFile(data.data);
-        return parsedData;
+      // The API returns sprint data directly, not wrapped in success/data
+      if (data && data.sprintName) {
+        // Data is already parsed by the server, return it directly
+        return data;
       } else {
-        throw new Error("No data received from server");
+        throw new Error("No valid sprint data received from server");
       }
     } catch (error) {
       console.error("❌ Failed to fetch real data:", error);
