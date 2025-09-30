@@ -8,7 +8,18 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "enhanced": "ts-node src/enhanced-index.ts",
+    "ui": "node ui/start-server.js",
+    "ui:direct": "node ui/server.js",
+    "ui:port": "PORT=3001 node ui/server.js",
     "test": "jest",
+    "test:playwright": "cd tests/playwright && npx playwright test",
+    "test:playwright:ui": "cd tests/playwright && npx playwright test --ui",
+    "test:playwright:headed": "cd tests/playwright && npx playwright test --headed",
+    "test:playwright:chrome": "cd tests/playwright && npx playwright test --project=chromium",
+    "test:playwright:firefox": "cd tests/playwright && npx playwright test --project=firefox",
+    "test:playwright:webkit": "cd tests/playwright && npx playwright test --project=webkit",
+    "test:playwright:all": "cd tests/playwright && npx playwright test --project=chromium --project=firefox --project=webkit",
+    "test:e2e": "npm run test:playwright",
     "audit": "npm audit --audit-level=moderate",
     "audit-fix": "npm audit fix --force"
   },
@@ -16,6 +27,7 @@
     "axios": "^1.6.2",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
+    "express": "^4.21.2",
     "tedious": "^18.6.1"
   },
   "devDependencies": {
