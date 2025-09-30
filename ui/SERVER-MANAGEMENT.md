@@ -12,6 +12,7 @@ npm run ui
 ```
 - **Automatically finds available port** (3000, 3001, 3002, etc.)
 - **Checks if server is already running** and reuses it
+- **Automatically opens browser** to the application
 - **Handles graceful shutdown** with Ctrl+C
 - **Shows helpful status messages**
 
@@ -36,6 +37,14 @@ PORT=3002 node ui/server.js
 ```
 - **Set any port** you want
 - **Environment variable override**
+
+#### **5. Disable Auto-Opening Browser**
+```bash
+npm run ui:no-browser
+```
+- **Starts server without opening browser**
+- **Useful for headless environments**
+- **Manual browser opening required**
 
 ## 🔧 **Server Features**
 
@@ -74,6 +83,13 @@ Instead of `localhost`, you can use:
 - **Online/offline detection**
 - **Automatic server status checks**
 - **Reconnection handling**
+
+### **Auto-Opening Browser**
+- **Cross-platform support** (Windows, macOS, Linux)
+- **Automatic browser detection** and opening
+- **Environment variable control** (`NO_BROWSER=true`)
+- **CI/CD friendly** (disabled in automated environments)
+- **Fallback handling** if browser opening fails
 
 ## 🚨 **Troubleshooting**
 
