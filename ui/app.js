@@ -1699,26 +1699,43 @@ Total Tickets: 4
   }
 
   setupPageCloseHandling() {
+    let isShuttingDown = false;
+    let shutdownTimeout = null;
+
     // Handle page close/refresh
     window.addEventListener("beforeunload", (e) => {
-      // Always show warning and offer to close server
-      e.preventDefault();
-      e.returnValue =
-        "Are you sure you want to leave? This will also stop the server.";
-      return e.returnValue;
+      if (!isShuttingDown) {
+        // Always show warning and offer to close server
+        e.preventDefault();
+        e.returnValue =
+          "Are you sure you want to leave? This will also stop the server.";
+        return e.returnValue;
+      }
     });
 
     // Handle actual page unload (when user confirms)
     window.addEventListener("unload", () => {
-      this.shutdownServer();
+      if (!isShuttingDown) {
+        isShuttingDown = true;
+        this.shutdownServer();
+      }
     });
 
     // Handle visibility change (tab switching)
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         console.log("📱 Page hidden - server continues running");
+        // Set a timeout to shutdown server if page stays hidden for too long
+        shutdownTimeout = setTimeout(() => {
+          console.log("⏰ Page hidden for too long, shutting down server");
+          this.shutdownServer();
+        }, 300000); // 5 minutes
       } else {
         console.log("👁️ Page visible - checking server status");
+        if (shutdownTimeout) {
+          clearTimeout(shutdownTimeout);
+          shutdownTimeout = null;
+        }
         this.checkServerStatus();
       }
     });
@@ -1732,23 +1749,64 @@ Total Tickets: 4
     window.addEventListener("offline", () => {
       console.log("📴 Connection lost - server may still be running");
     });
+
+    // Handle browser close detection (more reliable)
+    window.addEventListener("pagehide", () => {
+      console.log("🚪 Page hide event - shutting down server");
+      if (!isShuttingDown) {
+        isShuttingDown = true;
+        this.shutdownServer();
+      }
+    });
+
+    // Handle focus loss (user switching to another app)
+    window.addEventListener("blur", () => {
+      console.log("👁️ Window lost focus");
+    });
+
+    window.addEventListener("focus", () => {
+      console.log("👁️ Window gained focus");
+      if (shutdownTimeout) {
+        clearTimeout(shutdownTimeout);
+        shutdownTimeout = null;
+      }
+    });
   }
 
   async shutdownServer() {
     try {
       console.log("🛑 Shutting down server...");
-      const response = await fetch("/api/shutdown", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
 
-      if (response.ok) {
-        console.log("✅ Server shutdown initiated");
-      }
+      // Try multiple shutdown methods
+      const shutdownPromises = [
+        fetch("/api/shutdown", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }).catch(() => null), // Ignore errors
+
+        // Also try to kill any remaining node processes
+        this.killRemainingProcesses().catch(() => null),
+      ];
+
+      await Promise.allSettled(shutdownPromises);
+
+      console.log("✅ Server shutdown initiated");
     } catch (error) {
-      console.log("⚠️ Could not shutdown server:", error.message);
+      console.log("⚠️ Could not shutdown server gracefully:", error.message);
+      // Try to kill processes anyway
+      this.killRemainingProcesses();
+    }
+  }
+
+  async killRemainingProcesses() {
+    try {
+      // This would need to be implemented with a server-side endpoint
+      // For now, just log that we're attempting cleanup
+      console.log("🧹 Attempting to clean up remaining processes...");
+    } catch (error) {
+      console.log("⚠️ Could not kill remaining processes:", error.message);
     }
   }
 
