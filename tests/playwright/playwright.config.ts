@@ -73,8 +73,9 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: "node ../../server.js",
+    command: "node ../../start-app-simple.js",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    timeout: 30000,
   },
 });
