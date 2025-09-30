@@ -236,7 +236,8 @@ class ValidationWizard {
             if (comparison.action === "identical") {
               // Files are identical, proceed to next step
               console.log("Files are identical, proceeding to next step");
-              this.proceedToNextStep();
+              this.displaySprintSummary();
+              this.goToStep(2);
               return;
             } else if (comparison.action === "different") {
               // Files are different, show comparison modal
@@ -1677,12 +1678,12 @@ Total Tickets: 4
       const data = await response.json();
       console.log("✅ Real sprint data received:", data);
 
-      // Parse the file content to extract sprint data
-      if (data.success && data.data) {
-        const parsedData = this.parseJiraDataFile(data.data);
-        return parsedData;
+      // The API returns sprint data directly, not wrapped in success/data
+      if (data && data.sprintName) {
+        // Data is already parsed by the server, return it directly
+        return data;
       } else {
-        throw new Error("No data received from server");
+        throw new Error("No valid sprint data received from server");
       }
     } catch (error) {
       console.error("❌ Failed to fetch real data:", error);
