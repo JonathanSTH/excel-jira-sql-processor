@@ -11,6 +11,7 @@
     "ui": "node ui/start-server.js",
     "ui:direct": "node ui/server.js",
     "ui:port": "PORT=3001 node ui/server.js",
+    "ui:no-browser": "NO_BROWSER=true node ui/start-server.js",
     "test": "jest",
     "test:playwright": "cd tests/playwright && npx playwright test",
     "test:playwright:ui": "cd tests/playwright && npx playwright test --ui",

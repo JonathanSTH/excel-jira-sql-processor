@@ -44,6 +44,45 @@ class SmartServerStarter {
     }
   }
 
+  openBrowser(port) {
+    // Skip auto-opening if disabled via environment variable
+    if (
+      process.env.NO_BROWSER === "true" ||
+      process.env.CI ||
+      process.env.GITHUB_ACTIONS
+    ) {
+      console.log(
+        `🔗 Browser auto-opening disabled. Open manually: http://localhost:${port}/index.html`
+      );
+      return;
+    }
+
+    const url = `http://localhost:${port}/index.html`;
+    const { exec } = require("child_process");
+
+    console.log(`🌐 Opening browser to ${url}...`);
+
+    // Try different commands based on the platform
+    const commands = {
+      win32: `start ${url}`,
+      darwin: `open ${url}`,
+      linux: `xdg-open ${url}`,
+    };
+
+    const command = commands[process.platform] || `open ${url}`;
+
+    exec(command, (error) => {
+      if (error) {
+        console.log(
+          `⚠️ Could not open browser automatically: ${error.message}`
+        );
+        console.log(`🔗 Please manually open: ${url}`);
+      } else {
+        console.log(`✅ Browser opened successfully!`);
+      }
+    });
+  }
+
   async startServer() {
     try {
       // Check if server is already running on default port
@@ -85,6 +124,9 @@ class SmartServerStarter {
       console.log(`🔗 Open: http://localhost:${port}/index.html`);
       console.log(`💚 Health check: http://localhost:${port}/api/health`);
       console.log(`\n💡 Press Ctrl+C to stop the server`);
+
+      // Automatically open the browser
+      this.openBrowser(port);
 
       // Handle graceful shutdown
       process.on("SIGINT", () => {
