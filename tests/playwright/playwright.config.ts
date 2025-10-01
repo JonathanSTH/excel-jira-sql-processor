@@ -77,5 +77,10 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
+    env: {
+      // Prevent auto-opening the browser during tests by default
+      NO_OPEN: process.env.OPEN_BROWSER_DURING_TESTS === "1" ? "0" : "1",
+    },
   },
+  globalTeardown: require.resolve("./global-teardown"),
 });

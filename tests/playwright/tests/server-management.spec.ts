@@ -101,6 +101,35 @@ test.describe("Server Startup and Management", () => {
     await expect(page.locator("#data-source-modal")).toBeVisible();
   });
 
+  test("should not move to inProgress until sprint confirmed", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.locator("#new-sprint-card").click();
+    await page.locator("#use-real-data").click();
+
+    // Intercept the move-to-inprogress call
+    let moveCalls = 0;
+    await page.route("**/api/move-to-inprogress", (route) => {
+      moveCalls += 1;
+      route.continue();
+    });
+
+    // Wait for step 2
+    await page.waitForSelector("#step-2", { state: "visible" });
+
+    // Should not have moved yet
+    expect(moveCalls).toBe(0);
+
+    // Confirm sprint
+    await page.locator("#confirm-sprint-btn").click();
+
+    // Allow network flush
+    await page.waitForTimeout(300);
+
+    // Should have exactly one move call
+    expect(moveCalls).toBe(1);
+  });
   test("should handle network interruptions", async ({ page }) => {
     await page.goto("/");
 
@@ -117,8 +146,11 @@ test.describe("Server Startup and Management", () => {
     // Go back online
     await page.context().setOffline(false);
 
-    // App should handle this gracefully
-    await expect(page.locator("#loading-overlay")).toBeVisible();
+    // App should handle this gracefully: simplified flow may already finish loading.
+    // Assert no fatal error and that we reach step 2 eventually.
+    const errorModal = page.locator("text=Failed to fetch real data");
+    await expect(errorModal).not.toBeVisible();
+    await expect(page.locator("#step-2")).toBeVisible();
   });
 
   test("should clean up resources on shutdown", async ({ page, request }) => {

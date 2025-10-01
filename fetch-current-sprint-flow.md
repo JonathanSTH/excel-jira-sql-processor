@@ -21,41 +21,19 @@ flowchart TD
     
     L --> M[get-current-sprint-tickets.js]
     M --> N[Connect to JIRA API]
-    N --> O[JQL Query: project = WTCI AND sprint in openSprints]
+    N --> O[JQL Query]
     O --> P[Extract Ticket Data]
     P --> Q[Generate Formatted Text File]
     Q --> R[Save to sprintData/fetched/]
     
     R --> S[Server Parses Output]
     S --> T[parseSprintOutput Function]
-    T --> U[Convert to JSON Format]
-    U --> V[Check for Existing Files]
-    
-    V --> W{File Conflicts?}
-    W -->|No Conflicts| X[Return Sprint Data JSON]
-    W -->|Data Already Exists| Y[Show Data Already Exists Modal]
-    W -->|Files Differ| Z[Show File Comparison Modal]
-    W -->|Identical Content| AA[Proceed Automatically]
-    
-    Y --> BB{User Choice}
-    BB -->|Continue Existing| CC[Use Existing Data]
-    BB -->|Fetch Fresh| DD[Restart Process]
-    
-    Z --> EE{User Choice}
-    EE -->|Keep Existing| FF[Use Existing File]
-    EE -->|Keep New| GG[Use New File]
-    EE -->|Cancel| HH[Return to Step 1]
-    
-    AA --> X
-    CC --> X
-    FF --> X
-    GG --> X
+    T --> X[Return Sprint Data JSON]
     
     X --> II[Frontend Receives JSON]
-    II --> JJ[Parse JIRA Data File]
-    JJ --> KK[Check File Info]
-    KK --> LL[Display Sprint Summary]
+    II --> LL[Display Sprint Summary (unique tickets only)]
     LL --> MM[Go to Step 2 - Sprint Confirmation]
+    MM --> NN[On Confirm: Move file to inProgress]
     
     MM --> NN[User Reviews Sprint Data]
     NN --> OO[User Clicks Confirm Button]

@@ -18,6 +18,7 @@
     "test:playwright:webkit": "cd tests/playwright && npx playwright test --project=webkit",
     "test:playwright:all": "cd tests/playwright && npx playwright test --project=chromium --project=firefox --project=webkit",
     "test:e2e": "npm run test:playwright",
+    "clear:servers": "powershell -NoProfile -Command \"$ErrorActionPreference='SilentlyContinue'; $pids = @(); $pids += (Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' -and ($_.CommandLine -match 'server.js' -or $_.CommandLine -match 'start-app-simple.js' -or $_.CommandLine -match 'ui\\server.js') } | Select-Object -Expand ProcessId); for ($p=3000; $p -le 3010; $p++) { $conns = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue; if ($conns) { $pids += ($conns | Select-Object -Expand OwningProcess) } }; $pids = $pids | Sort-Object -Unique; foreach ($pid in $pids) { try { Write-Host \"Killing PID $pid\"; Stop-Process -Id $pid -Force } catch {} }\"",
     "audit": "npm audit --audit-level=moderate",
     "audit-fix": "npm audit fix --force"
   },

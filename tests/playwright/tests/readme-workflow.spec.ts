@@ -100,31 +100,8 @@ test.describe("README Instructions Flow", () => {
     await expect(page.locator(".sprint-info-card")).toBeVisible();
     await expect(page.locator(".sprint-name")).toContainText("WTCI Sprint");
 
-    // Check if we need to handle the "data already exists" modal first
-    const dataExistsModal = page.locator("#data-already-exists-modal");
-    const isDataExistsModalVisible = await dataExistsModal.isVisible();
-
-    if (isDataExistsModalVisible) {
-      // Close the data exists modal first
-      await page.locator("#data-exists-close").click();
-      await expect(dataExistsModal).not.toBeVisible();
-
-      // Then proceed with the workflow
-      await page.locator("#new-sprint-card").click();
-      await page.locator("#use-real-data").click();
-      await page.waitForTimeout(3000);
-
-      // Should now be on step 2
-      await expect(page.locator("#step-2")).toBeVisible();
-    }
-
-    // If a blocking modal is present, close it before confirming
-    if (await dataExistsModal.isVisible()) {
-      // Prefer continuing with existing data to match README's forward flow
-      await page.locator("#data-exists-continue").click();
-      await expect(dataExistsModal).not.toBeVisible();
-      await expect(page.locator("#step-2")).toBeVisible();
-    }
+    // Simplified flow: no modal; proceed directly to step 2
+    await expect(page.locator("#step-2")).toBeVisible();
 
     // Complete the workflow
     await page.locator("#confirm-sprint-btn").click();

@@ -68,6 +68,46 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
     const tickets = searchResponse.data.issues;
     console.log(`Found ${tickets.length} tickets in open sprints`);
 
+    // Derive sprint name and end date from ticket sprints (best-effort)
+    const sprintNameCounts = new Map();
+    const sprintEndDates = [];
+    tickets.forEach((ticket) => {
+      if (ticket.fields.sprint && Array.isArray(ticket.fields.sprint)) {
+        ticket.fields.sprint.forEach((s) => {
+          if (s && s.name) {
+            sprintNameCounts.set(
+              s.name,
+              (sprintNameCounts.get(s.name) || 0) + 1
+            );
+          }
+          if (s && (s.endDate || s.endDateTime)) {
+            // JIRA may use endDate or endDateTime
+            const raw = s.endDate || s.endDateTime;
+            const dateIso = new Date(raw).toISOString().split("T")[0];
+            if (!Number.isNaN(new Date(raw).getTime())) {
+              sprintEndDates.push(dateIso);
+            }
+          }
+        });
+      }
+    });
+
+    // Pick the most common sprint name or fallback
+    let derivedSprintName = null;
+    if (sprintNameCounts.size > 0) {
+      derivedSprintName = Array.from(sprintNameCounts.entries()).sort(
+        (a, b) => b[1] - a[1]
+      )[0][0];
+    }
+
+    // Choose the latest end date seen, else today
+    let derivedEndDate = null;
+    if (sprintEndDates.length > 0) {
+      derivedEndDate = sprintEndDates.sort().pop();
+    } else {
+      derivedEndDate = new Date().toISOString().split("T")[0];
+    }
+
     // Prepare content for text file
     let fileContent = `WTCI Sprint Tickets Report\n`;
     fileContent += `Generated: ${new Date().toISOString()}\n`;
@@ -77,10 +117,15 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
     console.log(`\n📋 Tickets in Open Sprints:`);
     console.log("=".repeat(80));
 
-    tickets.forEach((ticket, index) => {
-      const ticketInfo = `${index + 1}. ${ticket.key} - ${
-        ticket.fields.summary
-      }`;
+    const seenKeys = new Set();
+    let ticketIndex = 0;
+    tickets.forEach((ticket) => {
+      if (seenKeys.has(ticket.key)) {
+        return; // skip duplicates
+      }
+      seenKeys.add(ticket.key);
+      ticketIndex += 1;
+      const ticketInfo = `${ticketIndex}. ${ticket.key} - ${ticket.fields.summary}`;
       const status = `   Status: ${ticket.fields.status.name}`;
       const assignee = `   Assignee: ${
         ticket.fields.assignee?.displayName || "Unassigned"
@@ -147,16 +192,7 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
         ticket.fields.sprint?.map((s) => s.name).join(", ") || "Not assigned"
       }`;
 
-      // Console output (truncated)
-      console.log(ticketInfo);
-      console.log(status);
-      console.log(assignee);
-      console.log(priority);
-      console.log(created);
-      console.log(updated);
-      console.log(sprint);
-      console.log(`   Description: ${descriptionText.substring(0, 100)}...`);
-      console.log("");
+      // Do not print per-ticket lines to console to avoid duplicating parse content
 
       // File content (preserving original JIRA formatting)
       fileContent += ticketInfo + "\n";
@@ -181,52 +217,27 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
       fileContent += "\n" + "=".repeat(60) + "\n\n";
     });
 
-    // Add status grouping to file content
-    fileContent += "\nTICKETS GROUPED BY STATUS\n";
-    fileContent += "=".repeat(80) + "\n\n";
-
+    // Optionally compute status groups for console diagnostics only (not added to file)
     const statusGroups = {};
     tickets.forEach((ticket) => {
-      const status = ticket.fields.status.name;
-      if (!statusGroups[status]) {
-        statusGroups[status] = [];
-      }
-      statusGroups[status].push(ticket);
+      const s = ticket.fields.status.name;
+      statusGroups[s] = (statusGroups[s] || 0) + 1;
     });
 
-    Object.keys(statusGroups).forEach((status) => {
-      fileContent += `${status} (${statusGroups[status].length} tickets):\n`;
-      statusGroups[status].forEach((ticket) => {
-        fileContent += `  - ${ticket.key}: ${ticket.fields.summary}\n`;
-      });
-      fileContent += "\n";
-    });
-
-    // Write to file in the sprintData/fetched directory
-    const filename = `wtci-sprint-tickets-${
-      new Date().toISOString().split("T")[0]
-    }.txt`;
-
-    // Ensure the directory exists
-    const dir = "./sprintData/fetched";
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    const filepath = `${dir}/${filename}`;
-    fs.writeFileSync(filepath, fileContent, "utf8");
-
-    console.log(`\n📊 Tickets grouped by Status:`);
+    console.log(`\n📊 Tickets grouped by Status (summary):`);
     console.log("=".repeat(80));
-
     Object.keys(statusGroups).forEach((status) => {
-      console.log(`\n📋 ${status} (${statusGroups[status].length} tickets):`);
-      statusGroups[status].forEach((ticket) => {
-        console.log(`  - ${ticket.key}: ${ticket.fields.summary}`);
-      });
+      console.log(`  ${status}: ${statusGroups[status]} tickets`);
     });
 
-    console.log(`\n✅ Report saved to: ${filepath}`);
+    // Emit structured markers for the server to parse and save a single file
+    const sprintNameFromArg = `WTCI Sprint ${normalizedDate}`;
+    const finalSprintName = derivedSprintName || sprintNameFromArg;
+    console.log(`SPRINT_NAME: ${finalSprintName}`);
+    console.log(`SPRINT_END_DATE: ${derivedEndDate}`);
+    console.log("===BEGIN_REPORT===");
+    console.log(fileContent);
+    console.log("===END_REPORT===");
   } catch (error) {
     console.error("❌ Error:", error.response?.data || error.message);
   }

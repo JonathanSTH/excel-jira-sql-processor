@@ -219,55 +219,6 @@ class ValidationWizard {
           const response = await this.fetchRealSprintData();
           console.log("Real data response:", response);
           this.sprintData = response;
-
-          // Check if data already exists in workflow
-          console.log(
-            "Checking if data already exists in workflow:",
-            this.sprintData.fileInfo
-          );
-          if (
-            this.sprintData.fileInfo &&
-            this.sprintData.fileInfo.existingInWorkflow
-          ) {
-            console.log("Data already exists in workflow, showing modal");
-            this.showDataAlreadyExistsModal(this.sprintData);
-            return;
-          } else {
-            console.log("Data does not exist in workflow, proceeding normally");
-          }
-
-          // Check if file comparison is needed
-          if (
-            this.sprintData.fileInfo &&
-            this.sprintData.fileInfo.fileComparison
-          ) {
-            const comparison = this.sprintData.fileInfo.fileComparison;
-
-            if (comparison.action === "identical") {
-              // Files are identical, proceed to next step
-              console.log("Files are identical, proceeding to next step");
-              this.displaySprintSummary();
-              this.goToStep(2);
-              return;
-            } else if (comparison.action === "different") {
-              // Files are different, show comparison modal
-              this.showFileComparisonModal(comparison, this.sprintData);
-              return;
-            }
-          }
-
-          // Check if file already exists (legacy check)
-          if (this.sprintData.fileInfo && this.sprintData.fileInfo.filename) {
-            const existingFiles = await this.checkExistingFiles(
-              this.sprintData.fileInfo.filename
-            );
-
-            if (existingFiles.exists) {
-              // Show file exists modal
-              this.showFileExistsModal(existingFiles, this.sprintData);
-              return; // Don't proceed to next step yet
-            }
-          }
         } catch (error) {
           console.error("Failed to fetch real data:", error);
           // Fallback to mock data if real data fails
@@ -642,8 +593,12 @@ Total Tickets: 4
       return;
     }
 
-    // Move file to inProgress if it has file info
-    if (this.sprintData.fileInfo && this.sprintData.fileInfo.filename) {
+    // Only move file to inProgress when confirming on step 2 and file exists
+    if (
+      this.currentStep === 2 &&
+      this.sprintData.fileInfo &&
+      this.sprintData.fileInfo.filename
+    ) {
       try {
         const response = await fetch("/api/move-to-inprogress", {
           method: "POST",

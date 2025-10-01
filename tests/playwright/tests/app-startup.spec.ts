@@ -86,7 +86,7 @@ test.describe("App Startup Tests", () => {
     // Find an available port to test with
     const findAvailablePort = async (startPort: number) => {
       let port = startPort;
-      while (port <= 3010) {
+      while (port <= startPort + 50) {
         const isInUse = await new Promise((resolve) => {
           const testServer = net.createServer();
           testServer.listen(port, () => {
@@ -151,7 +151,7 @@ test.describe("App Startup Tests", () => {
     // Find available ports to test with
     const findAvailablePort = async (startPort: number) => {
       let port = startPort;
-      while (port <= 3010) {
+      while (port <= startPort + 50) {
         const isInUse = await new Promise((resolve) => {
           const testServer = net.createServer();
           testServer.listen(port, () => {
@@ -173,7 +173,8 @@ test.describe("App Startup Tests", () => {
       throw new Error("No available ports found");
     };
 
-    const startPort = await findAvailablePort(3000);
+    // Use a higher, less contended range to avoid collisions with app server
+    const startPort = await findAvailablePort(5000);
     const servers = [];
 
     try {
@@ -190,7 +191,7 @@ test.describe("App Startup Tests", () => {
       // Test port detection logic
       const findNextAvailablePort = async (startPort: number) => {
         let port = startPort;
-        while (port <= 3010) {
+        while (port <= startPort + 10) {
           const isInUse = await new Promise((resolve) => {
             const testServer = net.createServer();
             testServer.listen(port, () => {
@@ -229,7 +230,7 @@ test.describe("App Startup Tests", () => {
     // Find an available port to test with
     const findAvailablePort = async (startPort: number) => {
       let port = startPort;
-      while (port <= 3010) {
+      while (port <= startPort + 50) {
         const isInUse = await new Promise((resolve) => {
           const testServer = net.createServer();
           testServer.listen(port, () => {
@@ -287,7 +288,7 @@ test.describe("App Startup Tests", () => {
     // Find an available port to test with
     const findAvailablePort = async (startPort: number) => {
       let port = startPort;
-      while (port <= 3010) {
+      while (port <= startPort + 50) {
         const isInUse = await new Promise((resolve) => {
           const testServer = net.createServer();
           testServer.listen(port, () => {

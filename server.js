@@ -59,28 +59,28 @@ app.get("/api/fetch-sprint", async (req, res) => {
       }
 
       try {
-        // Parse the output to extract sprint data
+        // Parse structured markers and build sprint data + full report
+        const parsed = parseStructuredOutput(stdout);
         const sprintData = parseSprintOutput(stdout);
 
-        // Extract sprint date from the sprint name for filename
-        let sprintDate = "unknown";
-        if (sprintData.sprintName) {
-          // Extract date from sprint name like "WTCI Sprint 9/25/2025"
-          const dateMatch = sprintData.sprintName.match(
+        // Prefer structured markers when available; else derive from sprintData, else fallback to today
+        let endDate = parsed.endDate || null;
+        if (!endDate && sprintData?.endDate) {
+          const parsedEnd = parseDateStringToYMD(sprintData.endDate);
+          if (parsedEnd) endDate = parsedEnd;
+        }
+        if (!endDate && sprintData?.sprintName) {
+          const mdy = (sprintData.sprintName.match(
             /(\d{1,2}\/\d{1,2}\/\d{4})/
-          );
-          if (dateMatch) {
-            // Convert date format from M/D/YYYY to YYYY-MM-DD
-            const [month, day, year] = dateMatch[1].split("/");
-            sprintDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
-              2,
-              "0"
-            )}`;
+          ) || [])[1];
+          if (mdy) {
+            endDate = convertMDYToYMD(mdy);
           }
         }
-
-        // Use sprint date for filename, fallback to current date if not found
-        const filename = `wtci-sprint-tickets-${sprintDate}.txt`;
+        if (!endDate) {
+          endDate = new Date().toISOString().split("T")[0];
+        }
+        const filename = `wtci-sprint-tickets-${endDate}.txt`;
         const fetchedPath = path.join(
           __dirname,
           "sprintData",
@@ -88,66 +88,30 @@ app.get("/api/fetch-sprint", async (req, res) => {
           filename
         );
 
-        // Check if there's an existing file with the same normalized name
-        const existingFile = findExistingFileInFetched(filename);
-
-        let fileComparison = null;
-        let needsUserDecision = false;
-
-        if (existingFile) {
-          console.log(`⚠️ Found existing file: ${existingFile.filename}`);
-
-          // Compare contents
-          const contentsMatch = compareFileContents(
-            stdout,
-            existingFile.content
-          );
-
-          if (contentsMatch) {
-            console.log(`✅ Contents match - removing duplicate`);
-            // Contents match, remove the new file and use existing
-            // Don't save the new file, just proceed with existing
-            fileComparison = {
-              action: "identical",
-              existingFile: existingFile.filename,
-              message: "Files have identical content",
-            };
-          } else {
-            console.log(`⚠️ Contents differ - user decision needed`);
-            // Contents differ, need user to choose
-            needsUserDecision = true;
-            fileComparison = {
-              action: "different",
-              existingFile: existingFile.filename,
-              existingContent: existingFile.content,
-              newContent: stdout,
-              message: "Files have different content - user decision required",
-            };
-          }
-        } else {
-          console.log(`📁 No existing file found - saving new file`);
-          // No existing file, save the new one
-          fs.writeFileSync(fetchedPath, stdout, "utf8");
-          console.log(
-            `📁 Raw data saved to: ${filename} (Sprint: ${sprintData.sprintName})`
-          );
+        // Ensure fetched directory exists
+        const fetchedDir = path.join(__dirname, "sprintData", "fetched");
+        if (!fs.existsSync(fetchedDir)) {
+          fs.mkdirSync(fetchedDir, { recursive: true });
         }
 
-        // Check if this sprint data already exists in inProgress or completed folders
-        const existingFiles = await checkExistingFilesInWorkflow(filename);
+        // Always write the full report content from markers when present; fallback to stdout
+        const contentToSave = parsed.report || stdout;
+        fs.writeFileSync(fetchedPath, contentToSave, "utf8");
 
         // Add file info to response
         sprintData.fileInfo = {
           filename,
           path: fetchedPath,
-          saved: !needsUserDecision,
-          sprintDate,
-          existingInWorkflow: existingFiles.exists,
-          fileComparison,
-          needsUserDecision,
+          saved: true,
+          sprintDate: endDate,
+          existingInWorkflow: false,
+          fileComparison: null,
+          needsUserDecision: false,
         };
 
-        console.log("✅ Sprint data fetched and saved successfully");
+        console.log(
+          "✅ Sprint data fetched and saved successfully (single, full-content file)"
+        );
         res.json(sprintData);
       } catch (parseError) {
         console.error("Failed to parse sprint data:", parseError);
@@ -210,6 +174,41 @@ function compareFileContents(content1, content2) {
   return content1 === content2;
 }
 
+// Convert "Sep 24, 2025" to "2025-09-24"
+function parseDateStringToYMD(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().split("T")[0];
+  } catch {
+    return null;
+  }
+}
+
+// Convert "M/D/YYYY" to "YYYY-MM-DD"
+function convertMDYToYMD(mdy) {
+  const [m, d, y] = mdy.split("/");
+  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+// Parse structured markers from stdout emitted by get-current-sprint-tickets.js
+function parseStructuredOutput(output) {
+  try {
+    const nameMatch = output.match(/^SPRINT_NAME:\s*(.+)$/m);
+    const endMatch = output.match(/^SPRINT_END_DATE:\s*(\d{4}-\d{2}-\d{2})$/m);
+    const reportMatch = output.match(
+      /===BEGIN_REPORT===\n([\s\S]*?)\n===END_REPORT===/
+    );
+    return {
+      sprintName: nameMatch ? nameMatch[1].trim() : null,
+      endDate: endMatch ? endMatch[1] : null,
+      report: reportMatch ? reportMatch[1] : null,
+    };
+  } catch {
+    return { sprintName: null, endDate: null, report: null };
+  }
+}
+
 // Helper function to find existing file in fetched folder
 function findExistingFileInFetched(baseFilename) {
   const fetchedPath = path.join(__dirname, "sprintData", "fetched");
@@ -239,6 +238,7 @@ function parseSprintOutput(output) {
   let sprintName = "";
   let ticketCount = 0;
   const tickets = [];
+  const seenKeys = new Set();
 
   // Extract sprint name from the output
   const sprintMatch = output.match(/WTCI Sprint (\d+\/\d+\/\d+)/);
@@ -266,11 +266,17 @@ function parseSprintOutput(output) {
       inTicketsSection = true;
       const ticketMatch = trimmedLine.match(/^\d+\.\s+(WTCI-\d+)\s+-\s+(.+)/);
       if (ticketMatch) {
-        currentTicket = {
-          key: ticketMatch[1],
-          summary: ticketMatch[2],
-          status: "Unknown",
-        };
+        const key = ticketMatch[1];
+        if (seenKeys.has(key)) {
+          currentTicket = null; // skip duplicate block
+        } else {
+          seenKeys.add(key);
+          currentTicket = {
+            key,
+            summary: ticketMatch[2],
+            status: "Unknown",
+          };
+        }
       }
       continue;
     }

@@ -97,8 +97,14 @@ class SimpleAppStarter {
       console.log(`💚 Health check: http://localhost:${this.port}/api/health`);
       console.log(`\n💡 Press Ctrl+C to stop the server`);
 
-      // Open browser
-      await this.openBrowser(this.port);
+      // Open browser unless disabled for automated tests
+      if (process.env.NO_OPEN !== "1") {
+        await this.openBrowser(this.port);
+      } else {
+        console.log(
+          "🕵️ Running in NO_OPEN mode - not opening a browser window"
+        );
+      }
 
       // Keep the process alive
       return new Promise(() => {}); // Never resolves, keeps process running
