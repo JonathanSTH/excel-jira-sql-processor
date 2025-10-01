@@ -18,15 +18,15 @@
                     <span class="title-icon">🔍</span>
                     JIRA-SQL Validation Wizard
                 </h1>
-                <p class="app-subtitle">Automated data validation and verification system</p>
-            </div>
-        </header>
-
-        <!-- Main Content -->
-        <main class="app-main">
-            <div class="wizard-container">
-                <!-- Progress Indicator -->
-                <div class="progress-indicator">
+                <div class="header-current-step">
+                    <div class="step-number" id="header-step-number">1</div>
+                    <div class="header-step-detail">
+                        <span id="header-step-label">Sprint Selection</span>
+                        <span class="header-step-sep">of</span>
+                        <span class="step-total-circle" id="header-step-total">3</span>
+                    </div>
+                </div>
+                <div class="progress-indicator" style="display: none;">
                     <div class="progress-step active" data-step="1">
                         <div class="step-number">1</div>
                         <div class="step-label">Sprint Selection</div>
@@ -40,6 +40,13 @@
                         <div class="step-label">Validation</div>
                     </div>
                 </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <div class="wizard-container">
+
 
                 <!-- Wizard Steps -->
                 <div class="wizard-content">

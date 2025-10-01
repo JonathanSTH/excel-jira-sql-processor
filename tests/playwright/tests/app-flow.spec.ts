@@ -22,9 +22,14 @@ test.describe("JIRA-SQL Validation App", () => {
     await expect(page.locator("#new-sprint-card")).toBeVisible();
     await expect(page.locator("#load-existing-card")).toBeVisible();
 
-    // Check progress indicator
-    await expect(page.locator(".progress-indicator")).toBeVisible();
-    await expect(page.locator(".progress-step").first()).toHaveClass(/active/);
+    // Check header step badge (current step)
+    await expect(page.locator("#header-step-number")).toBeVisible();
+    await expect(page.locator("#header-step-label")).toBeVisible();
+    const headerStep = await page.locator("#header-step-number").textContent();
+    expect(headerStep?.trim()).toBe("1");
+    await expect(page.locator("#header-step-label")).toHaveText(
+      /Sprint Selection/i
+    );
   });
 
   test("should show data source modal when clicking new sprint", async ({

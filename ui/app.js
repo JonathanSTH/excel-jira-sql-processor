@@ -694,7 +694,8 @@ Total Tickets: 4
   }
 
   updateProgressIndicator() {
-    document.querySelectorAll(".progress-step").forEach((step, index) => {
+    const steps = document.querySelectorAll(".progress-step");
+    steps.forEach((step, index) => {
       const stepNumber = index + 1;
       if (stepNumber <= this.currentStep) {
         step.classList.add("active");
@@ -702,6 +703,23 @@ Total Tickets: 4
         step.classList.remove("active");
       }
     });
+
+    // Animate progress underline based on current step
+    const indicator = document.querySelector(".progress-indicator");
+    if (indicator) {
+      const total = steps.length;
+      const fillPercent =
+        Math.max(0, (this.currentStep - 1) / (total - 1)) * 100;
+      indicator.style.setProperty("--progress-fill", `${fillPercent}%`);
+    }
+
+    // Update compact header current-step display
+    const headerNum = document.getElementById("header-step-number");
+    const headerLabel = document.getElementById("header-step-label");
+    const labels = ["Sprint Selection", "Sprint Review", "Validation"];
+    const clamped = Math.min(Math.max(this.currentStep, 1), labels.length);
+    if (headerNum) headerNum.textContent = String(clamped);
+    if (headerLabel) headerLabel.textContent = labels[clamped - 1];
   }
 
   showLoadingOverlay(message = "Processing...") {
