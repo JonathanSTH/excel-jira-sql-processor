@@ -112,13 +112,10 @@ test.describe("JIRA-SQL Validation App", () => {
     // Wait for step 2
     await expect(page.locator("#step-2")).toBeVisible();
 
-    // Confirm sprint data and go to step 3
+    // Confirm sprint data and go to validation (now step 3)
     await page.locator("#confirm-sprint-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
-
-    // Proceed to validation and go to step 4
-    await page.locator("#proceed-validation-btn").click();
-    await expect(page.locator("#step-4")).toBeVisible();
+    // Results are shown directly as validation completes
 
     // Check validation results
     await expect(page.locator(".validation-summary")).toBeVisible();
@@ -140,13 +137,10 @@ test.describe("JIRA-SQL Validation App", () => {
     await page.locator("#use-mock-data").click();
     await expect(page.locator("#step-2")).toBeVisible();
 
-    // Go to step 3
+    // Go to step 3 (validation results)
     await page.locator("#confirm-sprint-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
-
-    // Go back to step 2
-    await page.locator("#back-to-confirmation-btn").click();
-    await expect(page.locator("#step-2")).toBeVisible();
+    // No back to confirmation from results in simplified flow
   });
 
   test("should display ticket details correctly", async ({ page }) => {
@@ -176,7 +170,6 @@ test.describe("JIRA-SQL Validation App", () => {
     await page.locator("#new-sprint-card").click();
     await page.locator("#use-mock-data").click();
     await page.locator("#confirm-sprint-btn").click();
-    await page.locator("#proceed-validation-btn").click();
 
     // Check validation results
     await expect(page.locator(".validation-summary")).toBeVisible();
@@ -190,99 +183,5 @@ test.describe("JIRA-SQL Validation App", () => {
     // Check validation details
     await expect(page.locator(".validation-details")).toBeVisible();
     await expect(page.locator(".result-item")).toHaveCount(5);
-  });
-
-  test("should handle add ticket modal", async ({ page }) => {
-    // Go to step 3 (ticket review)
-    await page.locator("#new-sprint-card").click();
-    await page.locator("#use-mock-data").click();
-    await page.locator("#confirm-sprint-btn").click();
-    await expect(page.locator("#step-3")).toBeVisible();
-
-    // Click add ticket button
-    await page.locator("#add-ticket-btn").click();
-
-    // Check modal appears
-    await expect(page.locator("#add-ticket-modal")).toBeVisible();
-    await expect(page.locator("#ticket-number-input")).toBeVisible();
-    await expect(page.locator("#search-ticket-btn")).toBeVisible();
-
-    // Close modal
-    await page.locator("#add-ticket-close").click();
-    await expect(page.locator("#add-ticket-modal")).not.toBeVisible();
-  });
-
-  test("should search for tickets", async ({ page }) => {
-    // Go to step 3 and open add ticket modal
-    await page.locator("#new-sprint-card").click();
-    await page.locator("#use-mock-data").click();
-    await page.locator("#confirm-sprint-btn").click();
-    await page.locator("#add-ticket-btn").click();
-
-    // Enter ticket number and search
-    await page.locator("#ticket-number-input").fill("WTCI-1234");
-    await page.locator("#search-ticket-btn").click();
-
-    // Check that search results appear
-    await expect(page.locator("#ticket-search-results")).toBeVisible();
-
-    // Verify we get back the correct ticket data
-    await expect(
-      page.locator("#ticket-search-results .ticket-search-result")
-    ).toBeVisible();
-    await expect(
-      page.locator("#ticket-search-results .ticket-header h4")
-    ).toContainText("WTCI-1234");
-    await expect(
-      page.locator("#ticket-search-results .ticket-status")
-    ).toBeVisible();
-    await expect(
-      page.locator("#ticket-search-results .ticket-details")
-    ).toBeVisible();
-
-    // Verify the ticket has the expected properties
-    const ticketHeader = await page
-      .locator("#ticket-search-results .ticket-header h4")
-      .textContent();
-    const ticketStatus = await page
-      .locator("#ticket-search-results .ticket-status")
-      .textContent();
-    const ticketSummary = await page
-      .locator("#ticket-search-results .ticket-field span")
-      .first()
-      .textContent();
-
-    expect(ticketHeader).toContain("WTCI-1234");
-    expect(ticketStatus).toBeTruthy();
-    expect(ticketSummary).toBeTruthy();
-  });
-
-  test("should handle Enter key in ticket search", async ({ page }) => {
-    // Go to step 3 and open add ticket modal
-    await page.locator("#new-sprint-card").click();
-    await page.locator("#use-mock-data").click();
-    await page.locator("#confirm-sprint-btn").click();
-    await page.locator("#add-ticket-btn").click();
-
-    // Enter ticket number and press Enter
-    await page.locator("#ticket-number-input").fill("WTCI-1234");
-    await page.locator("#ticket-number-input").press("Enter");
-
-    // Check that search results appear
-    await expect(page.locator("#ticket-search-results")).toBeVisible();
-
-    // Verify we get back the correct ticket data (same validation as click test)
-    await expect(
-      page.locator("#ticket-search-results .ticket-search-result")
-    ).toBeVisible();
-    await expect(
-      page.locator("#ticket-search-results .ticket-header h4")
-    ).toContainText("WTCI-1234");
-    await expect(
-      page.locator("#ticket-search-results .ticket-status")
-    ).toBeVisible();
-    await expect(
-      page.locator("#ticket-search-results .ticket-details")
-    ).toBeVisible();
   });
 });

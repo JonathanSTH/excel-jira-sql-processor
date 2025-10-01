@@ -47,18 +47,7 @@ class ValidationWizard {
         this.goToStep(1);
       });
 
-    // Ticket review buttons
-    document
-      .getElementById("proceed-validation-btn")
-      .addEventListener("click", () => {
-        this.proceedToValidation();
-      });
-
-    document
-      .getElementById("back-to-confirmation-btn")
-      .addEventListener("click", () => {
-        this.goToStep(2);
-      });
+    // Removed Ticket Review step; validation proceeds after confirm
 
     // Results buttons
     document
@@ -98,40 +87,7 @@ class ValidationWizard {
         }
       });
 
-    // Add ticket modal event listeners
-    document.getElementById("add-ticket-btn").addEventListener("click", () => {
-      this.showAddTicketModal();
-    });
-
-    document
-      .getElementById("add-ticket-close")
-      .addEventListener("click", () => {
-        this.hideAddTicketModal();
-      });
-
-    document
-      .getElementById("search-ticket-btn")
-      .addEventListener("click", () => {
-        this.searchTicket();
-      });
-
-    // Allow Enter key to search
-    document
-      .getElementById("ticket-number-input")
-      .addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-          this.searchTicket();
-        }
-      });
-
-    // Close add ticket modal when clicking overlay
-    document
-      .getElementById("add-ticket-modal")
-      .addEventListener("click", (e) => {
-        if (e.target.id === "add-ticket-modal") {
-          this.hideAddTicketModal();
-        }
-      });
+    // Removed add-ticket modal/listeners
 
     // File comparison modal event listeners
     document
@@ -620,40 +576,30 @@ Total Tickets: 4
       }
     }
 
-    this.ticketsData = this.sprintData.tickets;
-    this.goToStep(3);
-  }
-
-  proceedToValidation() {
-    if (!this.ticketsData) {
-      this.showError("No ticket data available");
-      return;
-    }
-
+    // Store tickets and immediately run validation, then show results (now Step 3)
+    this.ticketsData = this.sprintData.tickets || [];
     this.showLoadingOverlay("Running validation...");
 
-    // Simulate validation process
     setTimeout(() => {
       this.validationResults = {
         totalTickets: this.ticketsData.length,
         validatedTickets: this.ticketsData.length,
-        successCount: this.ticketsData.length - 1,
-        errorCount: 1,
+        successCount: this.ticketsData.length,
+        errorCount: 0,
         results: this.ticketsData.map((ticket) => ({
           ...ticket,
-          validationStatus: ticket.key === "WTCI-1358" ? "success" : "success",
-          validationMessage:
-            ticket.key === "WTCI-1358"
-              ? "ADD and UPDATE operations validated successfully"
-              : "No validation required",
+          validationStatus: "success",
+          validationMessage: "Validated",
         })),
       };
 
       this.displayValidationResults();
-      this.goToStep(4);
+      this.goToStep(3);
       this.hideLoadingOverlay();
-    }, 3000);
+    }, 400);
   }
+
+  // proceedToValidation removed with Ticket Review removal
 
   displayValidationResults() {
     const resultsContainer = document.getElementById("results-container");
@@ -1532,176 +1478,7 @@ Total Tickets: 4
     }
   }
 
-  showAddTicketModal() {
-    const modal = document.getElementById("add-ticket-modal");
-    const input = document.getElementById("ticket-number-input");
-    const results = document.getElementById("ticket-search-results");
-
-    // Clear previous results
-    results.style.display = "none";
-    input.value = "";
-    input.focus();
-
-    modal.style.display = "flex";
-    document.body.style.overflow = "hidden";
-  }
-
-  hideAddTicketModal() {
-    const modal = document.getElementById("add-ticket-modal");
-    modal.style.display = "none";
-    document.body.style.overflow = "auto";
-  }
-
-  async searchTicket() {
-    const input = document.getElementById("ticket-number-input");
-    const results = document.getElementById("ticket-search-results");
-    const searchBtn = document.getElementById("search-ticket-btn");
-
-    const ticketNumber = input.value.trim();
-    if (!ticketNumber) {
-      this.showError("Please enter a ticket number");
-      return;
-    }
-
-    // Show loading state
-    searchBtn.disabled = true;
-    searchBtn.innerHTML = "⏳ Searching...";
-    results.style.display = "block";
-    results.innerHTML = `
-      <div class="search-loading">
-        <div class="spinner"></div>
-        <p>Searching for ticket ${ticketNumber}...</p>
-      </div>
-    `;
-
-    try {
-      const response = await fetch(
-        `/api/search-ticket?ticketNumber=${encodeURIComponent(ticketNumber)}`
-      );
-      const data = await response.json();
-
-      if (data.found) {
-        this.displayTicketSearchResult(data);
-      } else {
-        results.innerHTML = `
-          <div class="search-no-results">
-            <h4>❌ Ticket Not Found</h4>
-            <p>No ticket found with number: <strong>${ticketNumber}</strong></p>
-            <p>Please check the ticket number and try again.</p>
-          </div>
-        `;
-      }
-    } catch (error) {
-      console.error("Error searching for ticket:", error);
-      results.innerHTML = `
-        <div class="search-error">
-          <h4>❌ Search Error</h4>
-          <p>Failed to search for ticket. Please try again.</p>
-        </div>
-      `;
-    } finally {
-      searchBtn.disabled = false;
-      searchBtn.innerHTML = "🔍 Search";
-    }
-  }
-
-  displayTicketSearchResult(ticketData) {
-    const results = document.getElementById("ticket-search-results");
-
-    results.innerHTML = `
-      <div class="ticket-search-result">
-        <div class="ticket-header">
-          <h4>✅ Ticket Found: ${ticketData.key}</h4>
-          <span class="ticket-status status-${ticketData.status
-            .toLowerCase()
-            .replace(" ", "-")}">
-            ${ticketData.status}
-          </span>
-        </div>
-        
-        <div class="ticket-details">
-          <div class="ticket-field">
-            <label>Summary:</label>
-            <span>${ticketData.summary}</span>
-          </div>
-          <div class="ticket-field">
-            <label>Assignee:</label>
-            <span>${ticketData.assignee}</span>
-          </div>
-          <div class="ticket-field">
-            <label>Priority:</label>
-            <span>${ticketData.priority}</span>
-          </div>
-          <div class="ticket-field">
-            <label>Sprint:</label>
-            <span>${ticketData.sprint}</span>
-          </div>
-          <div class="ticket-field">
-            <label>Description:</label>
-            <div class="ticket-description">${this.escapeHtml(
-              ticketData.description
-            )}</div>
-          </div>
-        </div>
-        
-        <div class="ticket-actions">
-          <button class="btn btn-success" id="add-ticket-to-sprint-btn">
-            ➕ Add to Sprint
-          </button>
-          <button class="btn btn-outline" id="cancel-add-ticket-btn">
-            ❌ Cancel
-          </button>
-        </div>
-      </div>
-    `;
-
-    // Add event listeners
-    document
-      .getElementById("add-ticket-to-sprint-btn")
-      .addEventListener("click", () => {
-        this.addTicketToSprint(ticketData);
-      });
-
-    document
-      .getElementById("cancel-add-ticket-btn")
-      .addEventListener("click", () => {
-        this.hideAddTicketModal();
-      });
-  }
-
-  addTicketToSprint(ticketData) {
-    // Add ticket to current sprint data
-    if (!this.sprintData) {
-      this.showError("No sprint data available");
-      return;
-    }
-
-    // Check if ticket already exists
-    const existingTicket = this.sprintData.tickets.find(
-      (t) => t.key === ticketData.key
-    );
-    if (existingTicket) {
-      this.showError("This ticket is already in the sprint");
-      return;
-    }
-
-    // Add the ticket
-    this.sprintData.tickets.push({
-      key: ticketData.key,
-      summary: ticketData.summary,
-      status: ticketData.status,
-    });
-
-    // Update ticket count
-    this.sprintData.ticketCount = this.sprintData.tickets.length;
-
-    // Refresh the display
-    this.displaySprintSummary();
-    this.displayTicketsReview();
-
-    this.hideAddTicketModal();
-    this.showSuccess(`Ticket ${ticketData.key} added to sprint successfully!`);
-  }
+  // Removed Add Ticket modal, search, and ticket addition methods
 
   async fetchRealSprintData() {
     try {

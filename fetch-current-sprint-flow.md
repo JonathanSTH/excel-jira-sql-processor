@@ -32,8 +32,10 @@ flowchart TD
     
     X --> II[Frontend Receives JSON]
     II --> LL[Display Sprint Summary (unique tickets only)]
-    LL --> MM[Go to Step 2 - Sprint Confirmation]
+    LL --> MM[Go to Step 2 - Sprint Review]
     MM --> NN[On Confirm: Move file to inProgress]
+    NN --> OO[Run Validation]
+    OO --> PP[Show Step 3 - Validation]
     
     MM --> NN[User Reviews Sprint Data]
     NN --> OO[User Clicks Confirm Button]

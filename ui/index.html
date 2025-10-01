@@ -33,15 +33,11 @@
                     </div>
                     <div class="progress-step" data-step="2">
                         <div class="step-number">2</div>
-                        <div class="step-label">Ticket Review</div>
+                        <div class="step-label">Sprint Review</div>
                     </div>
                     <div class="progress-step" data-step="3">
                         <div class="step-number">3</div>
                         <div class="step-label">Validation</div>
-                    </div>
-                    <div class="progress-step" data-step="4">
-                        <div class="step-number">4</div>
-                        <div class="step-label">Results</div>
                     </div>
                 </div>
 
@@ -78,10 +74,10 @@
                         </div>
                     </div>
 
-                    <!-- Step 2: Sprint Confirmation -->
+                    <!-- Step 2: Sprint Review -->
                     <div class="wizard-step" id="step-2">
                         <div class="step-header">
-                            <h2 class="step-title">Sprint Confirmation</h2>
+                            <h2 class="step-title">Sprint Review</h2>
                             <p class="step-description">Review the fetched sprint data</p>
                         </div>
 
@@ -101,38 +97,10 @@
                         </div>
                     </div>
 
-                    <!-- Step 3: Ticket Review -->
+
+
+                    <!-- Step 3: Validation Results -->
                     <div class="wizard-step" id="step-3">
-                        <div class="step-header">
-                            <h2 class="step-title">Ticket Review</h2>
-                            <p class="step-description">Review all tickets and select validation options</p>
-                        </div>
-
-                        <div class="step-content">
-                            <div class="tickets-header">
-                                <h3>Current Sprint Tickets</h3>
-                                <button class="btn btn-secondary" id="add-ticket-btn">
-                                    ➕ Add Ticket
-                                </button>
-                            </div>
-
-                            <div class="tickets-container" id="tickets-container">
-                                <!-- Tickets will be populated here -->
-                            </div>
-
-                            <div class="step-actions">
-                                <button class="btn btn-primary" id="proceed-validation-btn">
-                                    Proceed to Validation →
-                                </button>
-                                <button class="btn btn-outline" id="back-to-confirmation-btn">
-                                    ← Back to Confirmation
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Step 4: Validation Results -->
-                    <div class="wizard-step" id="step-4">
                         <div class="step-header">
                             <h2 class="step-title">Validation Results</h2>
                             <p class="step-description">Review validation results and generate reports</p>

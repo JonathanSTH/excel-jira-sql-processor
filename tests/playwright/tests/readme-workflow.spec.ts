@@ -37,18 +37,9 @@ test.describe("README Instructions Flow", () => {
     await expect(page.locator(".sprint-status")).toContainText("Active");
     await expect(page.locator(".ticket-item")).toHaveCount(5);
 
-    // Step 6: Confirm sprint data and proceed to ticket review
+    // Step 6: Confirm sprint data and proceed to validation results
     await page.locator("#confirm-sprint-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
-
-    // Step 7: Verify ticket review step
-    await expect(page.locator("#tickets-container")).toBeVisible();
-
-    // Step 8: Proceed to validation
-    await page.locator("#proceed-validation-btn").click();
-
-    // Step 9: Verify validation results step
-    await expect(page.locator("#step-4")).toBeVisible();
     await expect(page.locator(".validation-summary")).toBeVisible();
 
     // Step 10: Verify validation statistics
@@ -107,8 +98,7 @@ test.describe("README Instructions Flow", () => {
     await page.locator("#confirm-sprint-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
 
-    await page.locator("#proceed-validation-btn").click();
-    await expect(page.locator("#step-4")).toBeVisible();
+    await expect(page.locator("#step-3")).toBeVisible();
 
     // Verify validation results
     await expect(page.locator(".validation-summary")).toBeVisible();
@@ -166,13 +156,12 @@ test.describe("README Instructions Flow", () => {
     await expect(page.locator("#step-3")).toBeVisible();
     await expect(page.locator(".progress-step").nth(2)).toHaveClass(/active/);
 
-    // Step 4: Validation
-    await page.locator("#proceed-validation-btn").click();
-    await expect(page.locator("#step-4")).toBeVisible();
-    await expect(page.locator(".progress-step").nth(3)).toHaveClass(/active/);
+    // Step 4: Validation (now immediately after confirm in step 3)
+    await expect(page.locator("#step-3")).toBeVisible();
+    await expect(page.locator(".progress-step").nth(2)).toHaveClass(/active/);
 
     // Verify all steps are marked as completed
-    await expect(page.locator(".progress-step")).toHaveCount(4);
+    await expect(page.locator(".progress-step")).toHaveCount(3);
   });
 
   test("should handle error scenarios mentioned in README", async ({
@@ -196,9 +185,13 @@ test.describe("README Instructions Flow", () => {
     await page.locator("#confirm-sprint-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
 
-    // Test validation without proper data setup
-    await page.locator("#proceed-validation-btn").click();
-    await expect(page.locator("#step-4")).toBeVisible();
+    // Validation now shows at step 3 after confirm
+    await page.waitForSelector("#confirm-sprint-btn", { state: "attached" });
+    await page.evaluate(() => {
+      const btn = document.getElementById("confirm-sprint-btn");
+      if (btn) (btn as HTMLButtonElement).click();
+    });
+    await expect(page.locator("#step-3")).toBeVisible();
 
     // Verify error handling works
     await expect(page.locator(".validation-summary")).toBeVisible();

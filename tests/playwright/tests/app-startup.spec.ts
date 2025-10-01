@@ -108,7 +108,7 @@ test.describe("App Startup Tests", () => {
       throw new Error("No available ports found");
     };
 
-    const testPort = await findAvailablePort(3000);
+    const testPort = await findAvailablePort(5000);
 
     // Start a test server on the available port
     const testServer = net.createServer();
