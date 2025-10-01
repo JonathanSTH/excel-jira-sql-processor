@@ -35,17 +35,14 @@ class ValidationWizard {
       });
 
     // Sprint confirmation buttons
-    document
-      .getElementById("confirm-sprint-btn")
-      .addEventListener("click", () => {
-        this.confirmSprintData();
-      });
+    // Header actions (visible on step 2)
+    const headerConfirm = document.getElementById("header-confirm-btn");
+    if (headerConfirm)
+      headerConfirm.addEventListener("click", () => this.confirmSprintData());
 
-    document
-      .getElementById("back-to-sprint-btn")
-      .addEventListener("click", () => {
-        this.goToStep(1);
-      });
+    const headerBack = document.getElementById("header-back-btn");
+    if (headerBack)
+      headerBack.addEventListener("click", () => this.goToStep(1));
 
     // Removed Ticket Review step; validation proceeds after confirm
 
@@ -132,42 +129,51 @@ class ValidationWizard {
       );
 
       if (useMockData) {
-        // Use mock data
-        await this.simulateApiCall(1500);
-        this.sprintData = {
-          sprintName: "WTCI Sprint 9/25/2025 (Mock Data)",
-          ticketCount: 5,
-          status: "Active",
-          startDate: "Sep 16, 2025",
-          endDate: "Sep 24, 2025",
-          tickets: [
-            {
-              key: "WTCI-1358",
-              summary: "Update STaxCodeLocalJurisdication",
-              status: "Done",
-            },
-            {
-              key: "WTCI-1359",
-              summary: "Fix tax calculation bug",
-              status: "In Progress",
-            },
-            {
-              key: "WTCI-1360",
-              summary: "Update documentation",
-              status: "To Do",
-            },
-            {
-              key: "WTCI-1361",
-              summary: "Add new validation rules",
-              status: "To Do",
-            },
-            {
-              key: "WTCI-1362",
-              summary: "Update test cases",
-              status: "In Progress",
-            },
-          ],
-        };
+        // Use mock data (now sourced from sprintData/mocked)
+        await this.simulateApiCall(500);
+        const mockResponse = await fetch(
+          "/api/file-content?filename=mock-sprint.txt&folder=mocked"
+        );
+        if (mockResponse.ok) {
+          const { content } = await mockResponse.json();
+          const parsed = this.parseJiraDataFile(content);
+          // Provide name and dates similar to fetched for consistency
+          parsed.sprintName =
+            parsed.sprintName || "WTCI Sprint 9/25/2025 (Mock Data)";
+          parsed.status = parsed.status || "Active";
+          this.sprintData = parsed;
+        } else {
+          // Fallback to inline minimal mock if file missing
+          this.sprintData = {
+            sprintName: "WTCI Sprint 9/25/2025 (Mock Data)",
+            ticketCount: 4,
+            status: "Active",
+            startDate: "Sep 16, 2025",
+            endDate: "Sep 24, 2025",
+            tickets: [
+              {
+                key: "WTCI-1358",
+                summary: "Update STaxCodeLocalJurisdication",
+                status: "Done",
+              },
+              {
+                key: "WTCI-1359",
+                summary: "Fix tax calculation bug",
+                status: "In Progress",
+              },
+              {
+                key: "WTCI-1360",
+                summary: "Update documentation",
+                status: "To Do",
+              },
+              {
+                key: "WTCI-1361",
+                summary: "Add new validation rules",
+                status: "To Do",
+              },
+            ],
+          };
+        }
       } else {
         // Use real data - call the JIRA API script
         console.log("Using real data - calling fetchRealSprintData()");
@@ -396,13 +402,46 @@ Total Tickets: 4
 
     let inTicketsSection = false;
     let currentTicket = null;
+    let collectingDescription = false;
 
     for (const line of lines) {
       const trimmedLine = line.trim();
 
-      // Extract sprint name
+      // Extract structured markers
+      if (trimmedLine.startsWith("SPRINT_NAME:")) {
+        sprintName = trimmedLine.replace("SPRINT_NAME:", "").trim();
+        continue;
+      }
+
+      if (trimmedLine.startsWith("SPRINT_START_DATE:")) {
+        const dateMatch = trimmedLine.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          const d = new Date(dateMatch[1] + "T00:00:00");
+          startDate = d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+        }
+        continue;
+      }
+
+      if (trimmedLine.startsWith("SPRINT_END_DATE:")) {
+        const dateMatch = trimmedLine.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          const d = new Date(dateMatch[1] + "T00:00:00");
+          endDate = d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+        }
+        continue;
+      }
+
+      // Extract sprint name (fallback)
       if (trimmedLine.includes("WTCI Sprint")) {
-        sprintName = trimmedLine;
+        if (!sprintName) sprintName = trimmedLine;
         continue;
       }
 
@@ -412,35 +451,86 @@ Total Tickets: 4
         continue;
       }
 
-      // Extract dates
+      // Extract dates from old format (fallback)
       if (trimmedLine.includes("Generated:")) {
-        const dateMatch = trimmedLine.match(/(\d{4}-\d{2}-\d{2})/);
-        if (dateMatch) {
-          endDate = dateMatch[1];
+        if (!endDate) {
+          const dateMatch = trimmedLine.match(/(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) {
+            const d = new Date(dateMatch[1] + "T00:00:00");
+            endDate = d.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            });
+          }
         }
         continue;
       }
 
-      // Start parsing tickets when we hit the ticket list
+      // Start parsing tickets when we hit a ticket line; finalize previous if present
       if (trimmedLine.match(/^\d+\.\s+WTCI-\d+/)) {
         inTicketsSection = true;
+        // If a ticket was in progress, push it before starting a new one
+        if (currentTicket) {
+          tickets.push(currentTicket);
+          currentTicket = null;
+        }
         const ticketMatch = trimmedLine.match(/^\d+\.\s+(WTCI-\d+)\s+-\s+(.+)/);
         if (ticketMatch) {
           currentTicket = {
             key: ticketMatch[1],
             summary: ticketMatch[2],
             status: "Unknown",
+            description: "",
           };
+        }
+        collectingDescription = false;
+        continue;
+      }
+
+      // Extract ticket status and begin description collection
+      if (inTicketsSection && trimmedLine.startsWith("Status:")) {
+        if (currentTicket) {
+          currentTicket.status = trimmedLine.split(":")[1].trim();
+          collectingDescription = false;
         }
         continue;
       }
 
-      // Extract ticket status
-      if (inTicketsSection && trimmedLine.startsWith("Status:")) {
+      // Start of description section
+      if (inTicketsSection && trimmedLine.startsWith("Description:")) {
+        collectingDescription = true;
+        continue;
+      }
+
+      // Collect description indented lines
+      if (inTicketsSection && collectingDescription) {
+        if (trimmedLine === "") {
+          // blank line within description
+          if (currentTicket) currentTicket.description += "\n";
+          continue;
+        }
+        // New ticket starts -> finalize previous and reset
+        if (trimmedLine.match(/^\d+\.\s+WTCI-\d+/)) {
+          if (currentTicket) {
+            tickets.push(currentTicket);
+          }
+          const ticketMatch = trimmedLine.match(
+            /^\d+\.\s+(WTCI-\d+)\s+-\s+(.+)/
+          );
+          currentTicket = {
+            key: ticketMatch ? ticketMatch[1] : "",
+            summary: ticketMatch ? ticketMatch[2] : "",
+            status: "Unknown",
+            description: "",
+          };
+          collectingDescription = false;
+          continue;
+        }
         if (currentTicket) {
-          currentTicket.status = trimmedLine.split(":")[1].trim();
-          tickets.push(currentTicket);
-          currentTicket = null;
+          currentTicket.description +=
+            (currentTicket.description ? "\n" : "") +
+            trimmedLine.replace(/^[-\s]*/, "");
         }
         continue;
       }
@@ -449,6 +539,12 @@ Total Tickets: 4
       if (trimmedLine.includes("TICKETS GROUPED BY STATUS")) {
         break;
       }
+    }
+
+    // Finalize last ticket if still open
+    if (currentTicket) {
+      tickets.push(currentTicket);
+      currentTicket = null;
     }
 
     // Set default values if not found
@@ -521,26 +617,64 @@ Total Tickets: 4
                     <h4 class="preview-title">Ticket Preview:</h4>
                     <div class="tickets-list">
                         ${this.sprintData.tickets
-                          .map(
-                            (ticket) => `
-                            <div class="ticket-item">
-                                <span class="ticket-key">${ticket.key}</span>
-                                <span class="ticket-summary">${
-                                  ticket.summary
-                                }</span>
-                                <span class="ticket-status status-${ticket.status
-                                  .toLowerCase()
-                                  .replace(" ", "-")}">
-                                    ${ticket.status}
-                                </span>
-                            </div>
-                        `
-                          )
+                          .map((ticket) => {
+                            const detailsId = `details-${ticket.key}`;
+                            return `
+                              <div class="ticket-item" data-key="${ticket.key}">
+                                <div class="ticket-row" role="button" tabindex="0" aria-expanded="false" aria-controls="${detailsId}">
+                                  <span class="ticket-toggle" aria-hidden="true"></span>
+                                  <span class="ticket-key">${ticket.key}</span>
+                                  <span class="ticket-summary">${
+                                    ticket.summary
+                                  }</span>
+                                  <span class="ticket-status status-${ticket.status
+                                    .toLowerCase()
+                                    .replace(" ", "-")}">${ticket.status}</span>
+                                </div>
+                                <div class="ticket-details" id="${detailsId}" aria-hidden="true">${this.escapeHtml(
+                              ticket.description &&
+                                ticket.description.trim().length > 0
+                                ? ticket.description
+                                : ticket.summary
+                            )}</div>
+                              </div>`;
+                          })
                           .join("")}
                     </div>
                 </div>
             </div>
         `;
+
+    // Bind expand/collapse for entire ticket-item (accessible)
+    const items = summaryContainer.querySelectorAll(".ticket-item");
+    items.forEach((item) => {
+      const row = item.querySelector(".ticket-row");
+      const detailsId = row ? row.getAttribute("aria-controls") : null;
+      const details = detailsId ? document.getElementById(detailsId) : null;
+
+      const toggle = () => {
+        const isExpanded = row.getAttribute("aria-expanded") === "true";
+        row.setAttribute("aria-expanded", isExpanded ? "false" : "true");
+        if (details)
+          details.setAttribute("aria-hidden", isExpanded ? "true" : "false");
+        item.classList.toggle("expanded", !isExpanded);
+      };
+
+      item.addEventListener("click", (e) => {
+        if (e.target && e.target.closest && e.target.closest("a,button"))
+          return;
+        toggle();
+      });
+      if (row) {
+        row.setAttribute("tabindex", "0");
+        row.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggle();
+          }
+        });
+      }
+    });
   }
 
   async confirmSprintData() {
@@ -720,6 +854,11 @@ Total Tickets: 4
     const clamped = Math.min(Math.max(this.currentStep, 1), labels.length);
     if (headerNum) headerNum.textContent = String(clamped);
     if (headerLabel) headerLabel.textContent = labels[clamped - 1];
+
+    // Toggle header action visibility on step 2
+    const headerActions = document.getElementById("header-actions");
+    if (headerActions)
+      headerActions.style.display = this.currentStep === 2 ? "flex" : "none";
   }
 
   showLoadingOverlay(message = "Processing...") {
@@ -1533,43 +1672,14 @@ Total Tickets: 4
   }
 
   setupPageCloseHandling() {
-    let isShuttingDown = false;
-    let shutdownTimeout = null;
-
-    // Handle page close/refresh
-    window.addEventListener("beforeunload", (e) => {
-      if (!isShuttingDown) {
-        // Always show warning and offer to close server
-        e.preventDefault();
-        e.returnValue =
-          "Are you sure you want to leave? This will also stop the server.";
-        return e.returnValue;
-      }
-    });
-
-    // Handle actual page unload (when user confirms)
-    window.addEventListener("unload", () => {
-      if (!isShuttingDown) {
-        isShuttingDown = true;
-        this.shutdownServer();
-      }
-    });
+    // Note: We don't shutdown the server on page refresh or navigation
+    // The server stays running to allow quick restarts and page refreshes
+    // Users can manually stop the server using Ctrl+C in the terminal
 
     // Handle visibility change (tab switching)
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        console.log("📱 Page hidden - server continues running");
-        // Set a timeout to shutdown server if page stays hidden for too long
-        shutdownTimeout = setTimeout(() => {
-          console.log("⏰ Page hidden for too long, shutting down server");
-          this.shutdownServer();
-        }, 300000); // 5 minutes
-      } else {
+      if (!document.hidden) {
         console.log("👁️ Page visible - checking server status");
-        if (shutdownTimeout) {
-          clearTimeout(shutdownTimeout);
-          shutdownTimeout = null;
-        }
         this.checkServerStatus();
       }
     });
@@ -1583,65 +1693,6 @@ Total Tickets: 4
     window.addEventListener("offline", () => {
       console.log("📴 Connection lost - server may still be running");
     });
-
-    // Handle browser close detection (more reliable)
-    window.addEventListener("pagehide", () => {
-      console.log("🚪 Page hide event - shutting down server");
-      if (!isShuttingDown) {
-        isShuttingDown = true;
-        this.shutdownServer();
-      }
-    });
-
-    // Handle focus loss (user switching to another app)
-    window.addEventListener("blur", () => {
-      console.log("👁️ Window lost focus");
-    });
-
-    window.addEventListener("focus", () => {
-      console.log("👁️ Window gained focus");
-      if (shutdownTimeout) {
-        clearTimeout(shutdownTimeout);
-        shutdownTimeout = null;
-      }
-    });
-  }
-
-  async shutdownServer() {
-    try {
-      console.log("🛑 Shutting down server...");
-
-      // Try multiple shutdown methods
-      const shutdownPromises = [
-        fetch("/api/shutdown", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }).catch(() => null), // Ignore errors
-
-        // Also try to kill any remaining node processes
-        this.killRemainingProcesses().catch(() => null),
-      ];
-
-      await Promise.allSettled(shutdownPromises);
-
-      console.log("✅ Server shutdown initiated");
-    } catch (error) {
-      console.log("⚠️ Could not shutdown server gracefully:", error.message);
-      // Try to kill processes anyway
-      this.killRemainingProcesses();
-    }
-  }
-
-  async killRemainingProcesses() {
-    try {
-      // This would need to be implemented with a server-side endpoint
-      // For now, just log that we're attempting cleanup
-      console.log("🧹 Attempting to clean up remaining processes...");
-    } catch (error) {
-      console.log("⚠️ Could not kill remaining processes:", error.message);
-    }
   }
 
   async checkServerStatus() {

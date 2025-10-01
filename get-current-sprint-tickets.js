@@ -68,8 +68,9 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
     const tickets = searchResponse.data.issues;
     console.log(`Found ${tickets.length} tickets in open sprints`);
 
-    // Derive sprint name and end date from ticket sprints (best-effort)
+    // Derive sprint name, start date, and end date from ticket sprints (best-effort)
     const sprintNameCounts = new Map();
+    const sprintStartDates = [];
     const sprintEndDates = [];
     tickets.forEach((ticket) => {
       if (ticket.fields.sprint && Array.isArray(ticket.fields.sprint)) {
@@ -79,6 +80,14 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
               s.name,
               (sprintNameCounts.get(s.name) || 0) + 1
             );
+          }
+          if (s && (s.startDate || s.startDateTime)) {
+            // JIRA may use startDate or startDateTime
+            const raw = s.startDate || s.startDateTime;
+            const dateIso = new Date(raw).toISOString().split("T")[0];
+            if (!Number.isNaN(new Date(raw).getTime())) {
+              sprintStartDates.push(dateIso);
+            }
           }
           if (s && (s.endDate || s.endDateTime)) {
             // JIRA may use endDate or endDateTime
@@ -98,6 +107,12 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
       derivedSprintName = Array.from(sprintNameCounts.entries()).sort(
         (a, b) => b[1] - a[1]
       )[0][0];
+    }
+
+    // Choose the earliest start date seen, else a default
+    let derivedStartDate = null;
+    if (sprintStartDates.length > 0) {
+      derivedStartDate = sprintStartDates.sort()[0];
     }
 
     // Choose the latest end date seen, else today
@@ -234,6 +249,9 @@ async function getCurrentSprintTickets(sprintDate = "9/25/2025") {
     const sprintNameFromArg = `WTCI Sprint ${normalizedDate}`;
     const finalSprintName = derivedSprintName || sprintNameFromArg;
     console.log(`SPRINT_NAME: ${finalSprintName}`);
+    if (derivedStartDate) {
+      console.log(`SPRINT_START_DATE: ${derivedStartDate}`);
+    }
     console.log(`SPRINT_END_DATE: ${derivedEndDate}`);
     console.log("===BEGIN_REPORT===");
     console.log(fileContent);

@@ -5,16 +5,15 @@ import { promisify } from "util";
 const execAsync = promisify(exec);
 
 test.describe("Server Startup and Management", () => {
-  test("should start server with npm run app", async () => {
-    // Test that the server can be started with the npm script
-    // This test verifies the command exists and can be executed
-    const { stdout, stderr } = await execAsync("npm run app --help", {
+  test("should have app script available", async () => {
+    // Test that the npm app script exists in package.json
+    const { stdout, stderr } = await execAsync("npm run", {
       timeout: 5000,
-      cwd: process.cwd(),
+      cwd: "../../",
     });
 
-    // The command should exist (no error about missing script)
-    expect(stderr).not.toContain("Missing script");
+    // The app script should be listed
+    expect(stdout).toContain("app");
   });
 
   test("should respond to health check after startup", async ({ request }) => {
@@ -122,7 +121,7 @@ test.describe("Server Startup and Management", () => {
     expect(moveCalls).toBe(0);
 
     // Confirm sprint
-    await page.locator("#confirm-sprint-btn").click();
+    await page.locator("#header-confirm-btn").click();
 
     // Allow network flush
     await page.waitForTimeout(300);

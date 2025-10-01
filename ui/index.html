@@ -26,6 +26,10 @@
                         <span class="step-total-circle" id="header-step-total">3</span>
                     </div>
                 </div>
+                <div class="header-actions" id="header-actions" style="display: none;">
+                    <button class="btn btn-outline" id="header-back-btn">Back</button>
+                    <button class="btn btn-success" id="header-confirm-btn">Validation</button>
+                </div>
                 <div class="progress-indicator" style="display: none;">
                     <div class="progress-step active" data-step="1">
                         <div class="step-number">1</div>
@@ -52,10 +56,6 @@
                 <div class="wizard-content">
                     <!-- Step 1: Sprint Selection -->
                     <div class="wizard-step active" id="step-1">
-                        <div class="step-header">
-                            <h2 class="step-title">Sprint Selection</h2>
-                            <p class="step-description">Choose whether to work with a new sprint or existing data</p>
-                        </div>
 
                         <div class="step-content">
                             <div class="selection-card clickable-card" id="new-sprint-card">
@@ -83,23 +83,9 @@
 
                     <!-- Step 2: Sprint Review -->
                     <div class="wizard-step" id="step-2">
-                        <div class="step-header">
-                            <h2 class="step-title">Sprint Review</h2>
-                            <p class="step-description">Review the fetched sprint data</p>
-                        </div>
-
-                        <div class="step-content">
+                        <div class="step-content expanded-step">
                             <div class="sprint-summary" id="sprint-summary">
                                 <!-- Sprint data will be populated here -->
-                            </div>
-
-                            <div class="confirmation-actions">
-                                <button class="btn btn-success" id="confirm-sprint-btn">
-                                    ✅ This looks correct
-                                </button>
-                                <button class="btn btn-outline" id="back-to-sprint-btn">
-                                    ← Back to Sprint Selection
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -108,10 +94,6 @@
 
                     <!-- Step 3: Validation Results -->
                     <div class="wizard-step" id="step-3">
-                        <div class="step-header">
-                            <h2 class="step-title">Validation Results</h2>
-                            <p class="step-description">Review validation results and generate reports</p>
-                        </div>
 
                         <div class="step-content">
                             <div class="results-container" id="results-container">

@@ -61,26 +61,59 @@ app.get("/api/fetch-sprint", async (req, res) => {
       try {
         // Parse structured markers and build sprint data + full report
         const parsed = parseStructuredOutput(stdout);
-        const sprintData = parseSprintOutput(stdout);
+
+        // Parse the report content (not stdout) to get tickets
+        const reportContent = parsed.report || stdout;
+        const sprintData = parseSprintOutput(reportContent);
+
+        // Use sprint name from markers if available
+        if (parsed.sprintName) {
+          sprintData.sprintName = parsed.sprintName;
+        }
+
+        // Set start date from markers or default
+        let startDateISO = parsed.startDate || null;
+        if (!startDateISO) {
+          // Default to 2 weeks before end date if available
+          if (parsed.endDate) {
+            const end = new Date(parsed.endDate);
+            end.setDate(end.getDate() - 14);
+            startDateISO = end.toISOString().split("T")[0];
+          }
+        }
 
         // Prefer structured markers when available; else derive from sprintData, else fallback to today
-        let endDate = parsed.endDate || null;
-        if (!endDate && sprintData?.endDate) {
+        let endDateISO = parsed.endDate || null;
+        if (!endDateISO && sprintData?.endDate) {
           const parsedEnd = parseDateStringToYMD(sprintData.endDate);
-          if (parsedEnd) endDate = parsedEnd;
+          if (parsedEnd) endDateISO = parsedEnd;
         }
-        if (!endDate && sprintData?.sprintName) {
+        if (!endDateISO && sprintData?.sprintName) {
           const mdy = (sprintData.sprintName.match(
             /(\d{1,2}\/\d{1,2}\/\d{4})/
           ) || [])[1];
           if (mdy) {
-            endDate = convertMDYToYMD(mdy);
+            endDateISO = convertMDYToYMD(mdy);
           }
         }
-        if (!endDate) {
-          endDate = new Date().toISOString().split("T")[0];
+        if (!endDateISO) {
+          endDateISO = new Date().toISOString().split("T")[0];
         }
-        const filename = `wtci-sprint-tickets-${endDate}.txt`;
+
+        // Format dates for display (e.g., "Sep 16, 2025")
+        const formatDate = (isoDate) => {
+          if (!isoDate) return "Unknown";
+          const d = new Date(isoDate + "T00:00:00");
+          return d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+        };
+
+        sprintData.startDate = formatDate(startDateISO);
+        sprintData.endDate = formatDate(endDateISO);
+        const filename = `wtci-sprint-tickets-${endDateISO}.txt`;
         const fetchedPath = path.join(
           __dirname,
           "sprintData",
@@ -103,7 +136,7 @@ app.get("/api/fetch-sprint", async (req, res) => {
           filename,
           path: fetchedPath,
           saved: true,
-          sprintDate: endDate,
+          sprintDate: endDateISO,
           existingInWorkflow: false,
           fileComparison: null,
           needsUserDecision: false,
@@ -195,17 +228,21 @@ function convertMDYToYMD(mdy) {
 function parseStructuredOutput(output) {
   try {
     const nameMatch = output.match(/^SPRINT_NAME:\s*(.+)$/m);
+    const startMatch = output.match(
+      /^SPRINT_START_DATE:\s*(\d{4}-\d{2}-\d{2})$/m
+    );
     const endMatch = output.match(/^SPRINT_END_DATE:\s*(\d{4}-\d{2}-\d{2})$/m);
     const reportMatch = output.match(
       /===BEGIN_REPORT===\n([\s\S]*?)\n===END_REPORT===/
     );
     return {
       sprintName: nameMatch ? nameMatch[1].trim() : null,
+      startDate: startMatch ? startMatch[1] : null,
       endDate: endMatch ? endMatch[1] : null,
       report: reportMatch ? reportMatch[1] : null,
     };
   } catch {
-    return { sprintName: null, endDate: null, report: null };
+    return { sprintName: null, startDate: null, endDate: null, report: null };
   }
 }
 
@@ -257,6 +294,7 @@ function parseSprintOutput(output) {
   // Parse tickets from the output
   let currentTicket = null;
   let inTicketsSection = false;
+  let collectingDescription = false;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -264,20 +302,25 @@ function parseSprintOutput(output) {
     // Start parsing when we hit the ticket list
     if (trimmedLine.match(/^\d+\.\s+WTCI-\d+/)) {
       inTicketsSection = true;
+      // Finalize previous ticket if present
+      if (currentTicket) {
+        tickets.push(currentTicket);
+        currentTicket = null;
+      }
       const ticketMatch = trimmedLine.match(/^\d+\.\s+(WTCI-\d+)\s+-\s+(.+)/);
       if (ticketMatch) {
         const key = ticketMatch[1];
-        if (seenKeys.has(key)) {
-          currentTicket = null; // skip duplicate block
-        } else {
+        if (!seenKeys.has(key)) {
           seenKeys.add(key);
           currentTicket = {
             key,
             summary: ticketMatch[2],
             status: "Unknown",
+            description: "",
           };
         }
       }
+      collectingDescription = false;
       continue;
     }
 
@@ -285,8 +328,51 @@ function parseSprintOutput(output) {
     if (inTicketsSection && trimmedLine.startsWith("Status:")) {
       if (currentTicket) {
         currentTicket.status = trimmedLine.split(":")[1].trim();
-        tickets.push(currentTicket);
-        currentTicket = null;
+      }
+      collectingDescription = false;
+      continue;
+    }
+
+    // Start of description section
+    if (inTicketsSection && trimmedLine.startsWith("Description:")) {
+      collectingDescription = true;
+      continue;
+    }
+
+    // Collect description indented lines
+    if (inTicketsSection && collectingDescription) {
+      if (trimmedLine === "") {
+        // blank line within description
+        if (currentTicket) currentTicket.description += "\n";
+        continue;
+      }
+      // New ticket starts -> finalize previous
+      if (trimmedLine.match(/^\d+\.\s+WTCI-\d+/)) {
+        if (currentTicket) {
+          tickets.push(currentTicket);
+        }
+        const ticketMatch = trimmedLine.match(/^\d+\.\s+(WTCI-\d+)\s+-\s+(.+)/);
+        if (ticketMatch) {
+          const key = ticketMatch[1];
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            currentTicket = {
+              key,
+              summary: ticketMatch[2],
+              status: "Unknown",
+              description: "",
+            };
+          } else {
+            currentTicket = null;
+          }
+        }
+        collectingDescription = false;
+        continue;
+      }
+      if (currentTicket) {
+        currentTicket.description +=
+          (currentTicket.description ? "\n" : "") +
+          trimmedLine.replace(/^[-\s]*/, "");
       }
       continue;
     }
@@ -297,14 +383,20 @@ function parseSprintOutput(output) {
     }
   }
 
+  // Finalize last ticket if still open
+  if (currentTicket) {
+    tickets.push(currentTicket);
+    currentTicket = null;
+  }
+
   ticketCount = tickets.length;
 
   return {
     sprintName,
     ticketCount,
     status: "Active",
-    startDate: "Sep 16, 2025",
-    endDate: "Sep 24, 2025",
+    startDate: null, // Will be set by caller from markers or defaults
+    endDate: null, // Will be set by caller from markers or defaults
     tickets:
       tickets.length > 0
         ? tickets
@@ -333,7 +425,29 @@ app.get("/api/check-existing-files", async (req, res) => {
   try {
     const { filename } = req.query;
     if (!filename) {
-      return res.status(400).json({ error: "Filename parameter required" });
+      // When no filename is provided, return lists of available files
+      const fetchedDir = path.join(__dirname, "sprintData", "fetched");
+      const inProgressDir = path.join(__dirname, "sprintData", "inProgress");
+
+      const safeList = (dir) => {
+        try {
+          if (!fs.existsSync(dir)) return [];
+          return fs
+            .readdirSync(dir)
+            .filter((f) => f.toLowerCase().endsWith(".txt"));
+        } catch (_) {
+          return [];
+        }
+      };
+
+      const fetched = safeList(fetchedDir);
+      const inProgress = safeList(inProgressDir);
+
+      return res.json({
+        exists: fetched.length + inProgress.length > 0,
+        fetched,
+        inProgress,
+      });
     }
 
     const result = await checkExistingFilesInWorkflow(filename);

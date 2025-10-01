@@ -84,9 +84,9 @@ test.describe("JIRA-SQL Validation App", () => {
     // Check that sprint summary is displayed
     await expect(page.locator(".sprint-info-card")).toBeVisible();
     await expect(page.locator(".sprint-name")).toContainText(
-      "WTCI Sprint 9/25/2025 (Mock Data)"
+      "WTCI Sprint 9/25/2025"
     );
-    await expect(page.locator(".ticket-item")).toHaveCount(5);
+    await expect(page.locator(".ticket-item")).toHaveCount(4);
   });
 
   test("should proceed with real data flow", async ({ page }) => {
@@ -101,7 +101,10 @@ test.describe("JIRA-SQL Validation App", () => {
     );
 
     // Wait for loading to complete and step 2 to appear
-    await expect(page.locator("#loading-overlay")).not.toBeVisible();
+    // Real API calls may take longer
+    await expect(page.locator("#loading-overlay")).not.toBeVisible({
+      timeout: 15000,
+    });
     await expect(page.locator("#step-2")).toBeVisible();
 
     // Check that sprint summary is displayed
@@ -118,7 +121,7 @@ test.describe("JIRA-SQL Validation App", () => {
     await expect(page.locator("#step-2")).toBeVisible();
 
     // Confirm sprint data and go to validation (now step 3)
-    await page.locator("#confirm-sprint-btn").click();
+    await page.locator("#header-confirm-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
     // Results are shown directly as validation completes
 
@@ -134,7 +137,7 @@ test.describe("JIRA-SQL Validation App", () => {
     await expect(page.locator("#step-2")).toBeVisible();
 
     // Go back to step 1
-    await page.locator("#back-to-sprint-btn").click();
+    await page.locator("#header-back-btn").click();
     await expect(page.locator("#step-1")).toBeVisible();
 
     // Go forward again
@@ -143,7 +146,7 @@ test.describe("JIRA-SQL Validation App", () => {
     await expect(page.locator("#step-2")).toBeVisible();
 
     // Go to step 3 (validation results)
-    await page.locator("#confirm-sprint-btn").click();
+    await page.locator("#header-confirm-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
     // No back to confirmation from results in simplified flow
   });
@@ -156,7 +159,7 @@ test.describe("JIRA-SQL Validation App", () => {
 
     // Check ticket details
     const tickets = page.locator(".ticket-item");
-    await expect(tickets).toHaveCount(5);
+    await expect(tickets).toHaveCount(4);
 
     // Check first ticket
     await expect(tickets.first().locator(".ticket-key")).toContainText(
@@ -174,7 +177,7 @@ test.describe("JIRA-SQL Validation App", () => {
     // Complete the flow to validation results
     await page.locator("#new-sprint-card").click();
     await page.locator("#use-mock-data").click();
-    await page.locator("#confirm-sprint-btn").click();
+    await page.locator("#header-confirm-btn").click();
 
     // Check validation results
     await expect(page.locator(".validation-summary")).toBeVisible();
@@ -187,6 +190,6 @@ test.describe("JIRA-SQL Validation App", () => {
 
     // Check validation details
     await expect(page.locator(".validation-details")).toBeVisible();
-    await expect(page.locator(".result-item")).toHaveCount(5);
+    await expect(page.locator(".result-item")).toHaveCount(4);
   });
 });

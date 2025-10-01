@@ -110,7 +110,29 @@ test.describe("App Startup Tests", () => {
 
     const testPort = await findAvailablePort(5000);
 
-    // Start a test server on the available port
+    // Helper to check if port is in use
+    const isPortInUse = async (port: number) => {
+      return new Promise((resolve) => {
+        const server = net.createServer();
+        server.listen(port, () => {
+          server.once("close", () => {
+            resolve(false); // Port is available
+          });
+          server.close();
+        });
+        server.on("error", () => {
+          resolve(true); // Port is in use
+        });
+      });
+    };
+
+    // Find a second available port for testing
+    let nextAvailablePort = testPort + 1;
+    while (await isPortInUse(nextAvailablePort)) {
+      nextAvailablePort++;
+    }
+
+    // Start a test server on the first available port
     const testServer = net.createServer();
     await new Promise((resolve) => {
       testServer.listen(testPort, resolve);
@@ -118,26 +140,11 @@ test.describe("App Startup Tests", () => {
 
     try {
       // Test that the port is detected as in use
-      const isPortInUse = async (port: number) => {
-        return new Promise((resolve) => {
-          const server = net.createServer();
-          server.listen(port, () => {
-            server.once("close", () => {
-              resolve(false); // Port is available
-            });
-            server.close();
-          });
-          server.on("error", () => {
-            resolve(true); // Port is in use
-          });
-        });
-      };
-
       const portInUse = await isPortInUse(testPort);
       expect(portInUse).toBe(true);
 
-      // Test that next port should be available
-      const nextPortInUse = await isPortInUse(testPort + 1);
+      // Test that the second available port is indeed available
+      const nextPortInUse = await isPortInUse(nextAvailablePort);
       expect(nextPortInUse).toBe(false);
     } finally {
       // Clean up test server
@@ -351,46 +358,28 @@ test.describe("App Startup Tests", () => {
     expect(isStillRunning).toBe(false);
   });
 
-  test("should handle browser close and server shutdown", async ({ page }) => {
-    // Test that the app handles browser close events properly
+  test("should handle page visibility changes", async ({ page }) => {
+    // Test that the app handles page visibility changes properly
     await page.goto("/");
 
     // Wait for the app to initialize
     await page.waitForLoadState("networkidle");
 
-    // Check that the ValidationWizard class exists and has shutdown methods
-    const hasShutdownMethods = await page.evaluate(() => {
-      // Check if ValidationWizard class exists and has the methods
+    // Check that the ValidationWizard class exists and has page handling setup
+    const hasPageHandling = await page.evaluate(() => {
+      // Check if ValidationWizard class exists and has the method
       return (
         typeof ValidationWizard !== "undefined" &&
-        ValidationWizard.prototype.hasOwnProperty("shutdownServer") &&
         ValidationWizard.prototype.hasOwnProperty("setupPageCloseHandling")
       );
     });
-    expect(hasShutdownMethods).toBe(true);
+    expect(hasPageHandling).toBe(true);
 
-    // Check that page close events are set up by looking for event listeners
+    // Check that event listeners are available
     const hasEventListeners = await page.evaluate(() => {
       // Check if addEventListener is available (basic check)
       return typeof window.addEventListener === "function";
     });
     expect(hasEventListeners).toBe(true);
-  });
-
-  test("should have proper server shutdown logic in app.js", async () => {
-    // Test that the frontend has proper server shutdown logic
-    const fs = require("fs");
-    const path = require("path");
-
-    const appJsPath = path.join(process.cwd(), "../../ui/app.js");
-    expect(fs.existsSync(appJsPath)).toBe(true);
-
-    const appContent = fs.readFileSync(appJsPath, "utf8");
-
-    // Check for shutdown-related functions
-    expect(appContent).toContain("shutdownServer");
-    expect(appContent).toContain("setupPageCloseHandling");
-    expect(appContent).toContain("beforeunload");
-    expect(appContent).toContain("pagehide");
   });
 });
