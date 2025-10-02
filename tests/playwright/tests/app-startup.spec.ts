@@ -132,18 +132,24 @@ test.describe("App Startup Tests", () => {
       nextAvailablePort++;
     }
 
-    // Start a test server on the first available port
+    // Find an available port first
+    let availablePort = testPort;
+    while (await isPortInUse(availablePort)) {
+      availablePort++;
+    }
+
+    // Start a test server on the available port
     const testServer = net.createServer();
     await new Promise((resolve) => {
-      testServer.listen(testPort, resolve);
+      testServer.listen(availablePort, resolve);
     });
 
     try {
       // Test that the port is detected as in use
-      const portInUse = await isPortInUse(testPort);
+      const portInUse = await isPortInUse(availablePort);
       expect(portInUse).toBe(true);
 
-      // Test that the second available port is indeed available
+      // Test that the next available port is indeed available
       const nextPortInUse = await isPortInUse(nextAvailablePort);
       expect(nextPortInUse).toBe(false);
     } finally {

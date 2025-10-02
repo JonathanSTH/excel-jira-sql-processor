@@ -286,14 +286,18 @@ class ValidationWizard {
     }
   }
 
-  async loadExistingData() {
+  async loadExistingData(filename = null) {
     const existingDataCard = document.getElementById("load-existing-card");
     const statusText = document.getElementById("existing-data-status");
     const statusLoading = document.getElementById("existing-data-loading");
 
     try {
-      // Check if we have multiple sprint files
-      if (this.availableSprintFiles && this.availableSprintFiles.length > 1) {
+      // Check if we have multiple sprint files and no specific filename was provided
+      if (
+        !filename &&
+        this.availableSprintFiles &&
+        this.availableSprintFiles.length > 1
+      ) {
         // Show sprint selector modal
         this.showSprintSelectorModal();
         return;
@@ -304,15 +308,32 @@ class ValidationWizard {
       statusText.style.display = "none";
       statusLoading.style.display = "inline";
 
-      this.showLoadingOverlay("Loading existing data...");
+      this.showLoadingOverlay(
+        filename ? `Loading ${filename}...` : "Loading existing data..."
+      );
 
-      // For file:// protocol, we can't use fetch() to access local files
-      // Instead, we'll simulate loading the data since we know the file exists
-      await this.simulateApiCall(1500);
+      let fileContent;
 
-      // Simulate reading the file content (in a real implementation,
-      // you'd need a server or use a file input)
-      const mockFileContent = `WTCI Sprint Tickets Report
+      if (filename) {
+        // Load specific file from server
+        const response = await fetch(
+          `/api/file-content?filename=${encodeURIComponent(
+            filename
+          )}&folder=fetched`
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to load file: ${response.status}`);
+        }
+        const data = await response.json();
+        fileContent = data.content;
+      } else {
+        // For file:// protocol, we can't use fetch() to access local files
+        // Instead, we'll simulate loading the data since we know the file exists
+        await this.simulateApiCall(1500);
+
+        // Simulate reading the file content (in a real implementation,
+        // you'd need a server or use a file input)
+        fileContent = `WTCI Sprint Tickets Report
 Generated: 2025-09-26T04:04:09.083Z
 Total Tickets: 4
 ================================================================================
@@ -363,9 +384,15 @@ Total Tickets: 4
    Sprint: WTCI Sprint 9/25/2025
    Description:
      Fix calculation error in tax computation logic.`;
+      }
 
       // Parse the JIRA data file
-      this.sprintData = this.parseJiraDataFile(mockFileContent);
+      this.sprintData = this.parseJiraDataFile(fileContent);
+
+      // Add filename info for reference if provided
+      if (filename) {
+        this.sprintData.filename = filename;
+      }
 
       this.goToStep(2);
       this.displaySprintSummary();
@@ -889,66 +916,37 @@ Total Tickets: 4
     }
 
     const modal = document.getElementById("sprint-selector-modal");
-    const content = modal.querySelector(".sprint-selector-content");
+    const optionsContainer = modal.querySelector("#sprint-files-options");
 
-    // Update modal content with available sprint files
-    content.innerHTML = `
-      <div class="sprint-selector-header">
-        <h3>📋 Select Sprint to Load</h3>
-        <p>Multiple sprint files found. Choose which one to load:</p>
-      </div>
-      
-      <div class="sprint-files-list">
-        ${this.availableSprintFiles
-          .map(
-            (file, index) => `
-          <div class="sprint-file-item" data-filename="${file.filename}">
-            <div class="file-info">
-              <div class="file-name">${file.filename}</div>
-              <div class="file-details">
-                <span class="file-date">📅 ${file.date}</span>
-                <span class="file-size">📊 ${(file.size / 1024).toFixed(
-                  1
-                )} KB</span>
-                <span class="file-modified">🕒 ${new Date(
-                  file.modified
-                ).toLocaleDateString()}</span>
-              </div>
-            </div>
-            <button class="btn btn-primary load-sprint-btn" data-filename="${
-              file.filename
-            }">
-              Load
-            </button>
+    // Update modal content with available sprint files using data source modal format
+    optionsContainer.innerHTML = this.availableSprintFiles
+      .map(
+        (file, index) => `
+        <button class="modal-option sprint-file-option" data-filename="${file.filename}">
+          <div class="option-icon">📋</div>
+          <div class="option-content">
+            <h4>${file.filename}</h4>
+            <p>📅 ${file.date} • 📊 ${file.tickets} tickets</p>
           </div>
-        `
-          )
-          .join("")}
-      </div>
-      
-      <div class="sprint-selector-actions">
-        <button class="btn btn-outline" id="cancel-sprint-selector">
-          ❌ Cancel
         </button>
-      </div>
-    `;
+      `
+      )
+      .join("");
 
-    // Add event listeners
-    document.querySelectorAll(".load-sprint-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const filename = e.target.getAttribute("data-filename");
-        this.loadSelectedSprint(filename);
+    // Show modal
+    modal.style.display = "flex";
+    document.body.style.overflow = "hidden"; // Prevent scrolling
+
+    // Event listeners for file selection with auto-progression
+    const fileOptions = modal.querySelectorAll(".sprint-file-option");
+
+    fileOptions.forEach((option) => {
+      option.addEventListener("click", () => {
+        const filename = option.dataset.filename;
+        this.hideSprintSelectorModal();
+        this.loadExistingData(filename);
       });
     });
-
-    document
-      .getElementById("cancel-sprint-selector")
-      .addEventListener("click", () => {
-        this.hideSprintSelectorModal();
-      });
-
-    modal.style.display = "flex";
-    document.body.style.overflow = "hidden";
   }
 
   hideDataSourceModal() {
@@ -960,9 +958,16 @@ Total Tickets: 4
   createSprintSelectorModal() {
     const modalHTML = `
       <div class="modal-overlay" id="sprint-selector-modal" style="display: none;">
-        <div class="modal-container sprint-selector-modal">
-          <div class="sprint-selector-content">
-            <!-- Content will be populated dynamically -->
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3 class="modal-title">Select Sprint File</h3>
+            <button class="modal-close" id="sprint-selector-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-description">Multiple sprint files found. Choose which one to load:</p>
+            <div class="modal-options" id="sprint-files-options">
+              <!-- Content will be populated dynamically -->
+            </div>
           </div>
         </div>
       </div>
@@ -978,6 +983,13 @@ Total Tickets: 4
           this.hideSprintSelectorModal();
         }
       });
+
+    // Close button event listener
+    document
+      .getElementById("sprint-selector-close")
+      .addEventListener("click", () => {
+        this.hideSprintSelectorModal();
+      });
   }
 
   hideSprintSelectorModal() {
@@ -985,56 +997,6 @@ Total Tickets: 4
     if (modal) {
       modal.style.display = "none";
       document.body.style.overflow = "auto";
-    }
-  }
-
-  async loadSelectedSprint(filename) {
-    this.hideSprintSelectorModal();
-
-    // Show loading state
-    const existingDataCard = document.getElementById("load-existing-card");
-    const statusText = document.getElementById("existing-data-status");
-    const statusLoading = document.getElementById("existing-data-loading");
-
-    existingDataCard.classList.add("loading");
-    statusText.style.display = "none";
-    statusLoading.style.display = "inline";
-
-    this.showLoadingOverlay(`Loading ${filename}...`);
-
-    try {
-      // Load the actual file content from the server
-      const response = await fetch(
-        `/api/load-sprint-file?filename=${encodeURIComponent(filename)}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to load file");
-      }
-
-      // Parse the file content to extract sprint data
-      this.sprintData = this.parseJiraDataFile(data.data);
-
-      // Add filename info for reference
-      this.sprintData.filename = filename;
-
-      this.displaySprintSummary();
-      this.goToStep(2);
-    } catch (error) {
-      console.error("Error loading selected sprint:", error);
-      this.showError(`Failed to load ${filename}. Please try again.`);
-    } finally {
-      // Hide loading state
-      existingDataCard.classList.remove("loading");
-      statusText.style.display = "inline";
-      statusLoading.style.display = "none";
-      this.hideLoadingOverlay();
     }
   }
 
