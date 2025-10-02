@@ -18,31 +18,22 @@
                     <span class="title-icon">🔍</span>
                     JIRA-SQL Validation Wizard
                 </h1>
-                <div class="header-current-step">
-                    <div class="step-number" id="header-step-number">1</div>
-                    <div class="header-step-detail">
-                        <span id="header-step-label">Sprint Selection</span>
-                        <span class="header-step-sep">of</span>
-                        <span class="step-total-circle" id="header-step-total">3</span>
+                <div class="header-navigation">
+                    <button class="btn btn-outline header-nav-btn" id="header-back-btn"
+                        style="display: none;">Back</button>
+                    <div class="header-current-step">
+                        <div class="step-number" id="header-step-number">1</div>
+                        <div class="header-step-detail">
+                            <span id="header-step-label">Sprint Selection</span>
+                            <span class="header-step-sep">of</span>
+                            <span class="step-total-circle" id="header-step-total">3</span>
+                        </div>
                     </div>
+                    <button class="btn btn-success header-nav-btn" id="header-confirm-btn"
+                        style="display: none;">Validation</button>
                 </div>
-                <div class="header-actions" id="header-actions" style="display: none;">
-                    <button class="btn btn-outline" id="header-back-btn">Back</button>
-                    <button class="btn btn-success" id="header-confirm-btn">Validation</button>
-                </div>
-                <div class="progress-indicator" style="display: none;">
-                    <div class="progress-step active" data-step="1">
-                        <div class="step-number">1</div>
-                        <div class="step-label">Sprint Selection</div>
-                    </div>
-                    <div class="progress-step" data-step="2">
-                        <div class="step-number">2</div>
-                        <div class="step-label">Sprint Review</div>
-                    </div>
-                    <div class="progress-step" data-step="3">
-                        <div class="step-number">3</div>
-                        <div class="step-label">Validation</div>
-                    </div>
+                <div class="header-sprint-info" id="header-sprint-info" style="display: none;">
+                    <!-- Sprint header and details will be populated here -->
                 </div>
             </div>
         </header>
@@ -68,7 +59,7 @@
                                 </div>
                             </div>
 
-                            <div class="selection-card" id="load-existing-card">
+                            <div class="selection-card clickable-card" id="load-existing-card">
                                 <div class="card-icon">📁</div>
                                 <h3 class="card-title">Existing Data</h3>
                                 <p class="card-description">Use previously saved sprint data</p>

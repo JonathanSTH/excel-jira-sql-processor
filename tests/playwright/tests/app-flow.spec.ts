@@ -81,8 +81,8 @@ test.describe("JIRA-SQL Validation App", () => {
     await expect(page.locator("#loading-overlay")).not.toBeVisible();
     await expect(page.locator("#step-2")).toBeVisible();
 
-    // Check that sprint summary is displayed
-    await expect(page.locator(".sprint-info-card")).toBeVisible();
+    // Check that sprint summary is displayed in header
+    await expect(page.locator("#header-sprint-info")).toBeVisible();
     await expect(page.locator(".sprint-name")).toContainText(
       "WTCI Sprint 9/25/2025"
     );
@@ -107,8 +107,8 @@ test.describe("JIRA-SQL Validation App", () => {
     });
     await expect(page.locator("#step-2")).toBeVisible();
 
-    // Check that sprint summary is displayed
-    await expect(page.locator(".sprint-info-card")).toBeVisible();
+    // Check that sprint summary is displayed in header
+    await expect(page.locator("#header-sprint-info")).toBeVisible();
     await expect(page.locator(".sprint-name")).toContainText("WTCI Sprint");
   });
 
