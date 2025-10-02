@@ -29,8 +29,8 @@ test.describe("README Instructions Flow", () => {
     await expect(page.locator("#loading-overlay")).not.toBeVisible();
     await expect(page.locator("#step-2")).toBeVisible();
 
-    // Verify sprint data is displayed correctly
-    await expect(page.locator(".sprint-info-card")).toBeVisible();
+    // Verify sprint data is displayed correctly in header
+    await expect(page.locator("#header-sprint-info")).toBeVisible();
     await expect(page.locator(".sprint-name")).toContainText(
       "WTCI Sprint 9/25/2025"
     );
@@ -87,8 +87,8 @@ test.describe("README Instructions Flow", () => {
     await expect(page.locator("#loading-overlay")).not.toBeVisible();
     await expect(page.locator("#step-2")).toBeVisible();
 
-    // Verify real sprint data is displayed
-    await expect(page.locator(".sprint-info-card")).toBeVisible();
+    // Verify real sprint data is displayed in header
+    await expect(page.locator("#header-sprint-info")).toBeVisible();
     await expect(page.locator(".sprint-name")).toContainText("WTCI Sprint");
 
     // Simplified flow: no modal; proceed directly to step 2
@@ -146,7 +146,10 @@ test.describe("README Instructions Flow", () => {
 
     // Step 1: Verify initial state
     await expect(page.locator("#step-1")).toBeVisible();
-    await expect(page.locator(".progress-step").first()).toHaveClass(/active/);
+    await expect(page.locator("#header-step-number")).toHaveText("1");
+    await expect(page.locator("#header-step-label")).toHaveText(
+      "Sprint Selection"
+    );
 
     // Step 2: Start workflow
     await page.locator("#new-sprint-card").click();
@@ -154,19 +157,24 @@ test.describe("README Instructions Flow", () => {
 
     // Verify step 2
     await expect(page.locator("#step-2")).toBeVisible();
-    await expect(page.locator(".progress-step").nth(1)).toHaveClass(/active/);
+    await expect(page.locator("#header-step-number")).toHaveText("2");
+    await expect(page.locator("#header-step-label")).toHaveText(
+      "Sprint Review"
+    );
 
     // Step 3: Confirm and proceed
     await page.locator("#header-confirm-btn").click();
     await expect(page.locator("#step-3")).toBeVisible();
-    await expect(page.locator(".progress-step").nth(2)).toHaveClass(/active/);
+    await expect(page.locator("#header-step-number")).toHaveText("3");
+    await expect(page.locator("#header-step-label")).toHaveText("Validation");
 
     // Step 4: Validation (now immediately after confirm in step 3)
     await expect(page.locator("#step-3")).toBeVisible();
-    await expect(page.locator(".progress-step").nth(2)).toHaveClass(/active/);
+    await expect(page.locator("#header-step-number")).toHaveText("3");
+    await expect(page.locator("#header-step-label")).toHaveText("Validation");
 
-    // Verify all steps are marked as completed
-    await expect(page.locator(".progress-step")).toHaveCount(3);
+    // Verify validation results are displayed
+    await expect(page.locator(".validation-summary")).toBeVisible();
   });
 
   test("should handle error scenarios mentioned in README", async ({

@@ -213,8 +213,8 @@ class ValidationWizard {
         }
       }
 
-      this.displaySprintSummary();
       this.goToStep(2);
+      this.displaySprintSummary();
     } catch (error) {
       console.error("Error fetching sprint:", error);
       this.showError("Failed to fetch sprint data. Please try again.");
@@ -367,8 +367,8 @@ Total Tickets: 4
       // Parse the JIRA data file
       this.sprintData = this.parseJiraDataFile(mockFileContent);
 
-      this.displaySprintSummary();
       this.goToStep(2);
+      this.displaySprintSummary();
     } catch (error) {
       console.error("Error loading existing data:", error);
 
@@ -588,60 +588,28 @@ Total Tickets: 4
     if (!this.sprintData) return;
 
     summaryContainer.innerHTML = `
-            <div class="sprint-info-card">
-                <div class="sprint-header">
-                    <h3 class="sprint-name">${this.sprintData.sprintName}</h3>
-                    <span class="sprint-status status-${this.sprintData.status
-                      .toLowerCase()
-                      .replace(" ", "-")}">
-                        ${this.sprintData.status}
-                    </span>
-                </div>
-                
-                <div class="sprint-details">
-                    <div class="detail-item">
-                        <span class="detail-label">📅 Duration:</span>
-                        <span class="detail-value">${
-                          this.sprintData.startDate
-                        } - ${this.sprintData.endDate}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">🎫 Tickets:</span>
-                        <span class="detail-value">${
-                          this.sprintData.ticketCount
-                        }</span>
-                    </div>
-                </div>
-                
-                <div class="tickets-preview">
-                    <h4 class="preview-title">Ticket Preview:</h4>
-                    <div class="tickets-list">
-                        ${this.sprintData.tickets
-                          .map((ticket) => {
-                            const detailsId = `details-${ticket.key}`;
-                            return `
-                              <div class="ticket-item" data-key="${ticket.key}">
-                                <div class="ticket-row" role="button" tabindex="0" aria-expanded="false" aria-controls="${detailsId}">
-                                  <span class="ticket-toggle" aria-hidden="true"></span>
-                                  <span class="ticket-key">${ticket.key}</span>
-                                  <span class="ticket-summary">${
-                                    ticket.summary
-                                  }</span>
-                                  <span class="ticket-status status-${ticket.status
-                                    .toLowerCase()
-                                    .replace(" ", "-")}">${ticket.status}</span>
-                                </div>
-                                <div class="ticket-details" id="${detailsId}" aria-hidden="true">${this.escapeHtml(
-                              ticket.description &&
-                                ticket.description.trim().length > 0
-                                ? ticket.description
-                                : ticket.summary
-                            )}</div>
-                              </div>`;
-                          })
-                          .join("")}
-                    </div>
-                </div>
+            <div class="tickets-list">
+                ${this.sprintData.tickets
+                  .map((ticket) => {
+                    const detailsId = `details-${ticket.key}`;
+                    return `
+                      <div class="ticket-item" data-key="${ticket.key}">
+                        <div class="ticket-row" role="button" tabindex="0" aria-expanded="false" aria-controls="${detailsId}">
+                          <span class="ticket-toggle" aria-hidden="true"></span>
+                          <span class="ticket-key">${ticket.key}</span>
+                          <span class="ticket-summary">${ticket.summary}</span>
+                          <span class="ticket-status status-${ticket.status
+                            .toLowerCase()
+                            .replace(" ", "-")}">${ticket.status}</span>
+                        </div>
+                        <div class="ticket-details" id="${detailsId}" aria-hidden="true">${this.escapeHtml(
+                      ticket.description && ticket.description.trim().length > 0
+                        ? ticket.description
+                        : ticket.summary
+                    )}</div>
+                      </div>`;
+                  })
+                  .join("")}
             </div>
         `;
 
@@ -675,6 +643,23 @@ Total Tickets: 4
         });
       }
     });
+
+    // Also populate the header sprint info (only if on step 2 or later)
+    const headerSprintInfo = document.getElementById("header-sprint-info");
+    if (headerSprintInfo && this.currentStep >= 2) {
+      headerSprintInfo.innerHTML = `
+        <span class="header-info-item sprint-name">${
+          this.sprintData.sprintName
+        }</span>
+        <span class="header-info-item">📅 ${this.sprintData.startDate} - ${
+        this.sprintData.endDate
+      }</span>
+        <span class="header-info-item">🎫 ${this.sprintData.ticketCount}</span>
+        <span class="header-info-item sprint-status status-${this.sprintData.status
+          .toLowerCase()
+          .replace(" ", "-")}">${this.sprintData.status}</span>
+      `;
+    }
   }
 
   async confirmSprintData() {
@@ -828,25 +813,6 @@ Total Tickets: 4
   }
 
   updateProgressIndicator() {
-    const steps = document.querySelectorAll(".progress-step");
-    steps.forEach((step, index) => {
-      const stepNumber = index + 1;
-      if (stepNumber <= this.currentStep) {
-        step.classList.add("active");
-      } else {
-        step.classList.remove("active");
-      }
-    });
-
-    // Animate progress underline based on current step
-    const indicator = document.querySelector(".progress-indicator");
-    if (indicator) {
-      const total = steps.length;
-      const fillPercent =
-        Math.max(0, (this.currentStep - 1) / (total - 1)) * 100;
-      indicator.style.setProperty("--progress-fill", `${fillPercent}%`);
-    }
-
     // Update compact header current-step display
     const headerNum = document.getElementById("header-step-number");
     const headerLabel = document.getElementById("header-step-label");
@@ -855,10 +821,26 @@ Total Tickets: 4
     if (headerNum) headerNum.textContent = String(clamped);
     if (headerLabel) headerLabel.textContent = labels[clamped - 1];
 
-    // Toggle header action visibility on step 2
-    const headerActions = document.getElementById("header-actions");
-    if (headerActions)
-      headerActions.style.display = this.currentStep === 2 ? "flex" : "none";
+    // Toggle header button visibility based on current step
+    const headerBackBtn = document.getElementById("header-back-btn");
+    const headerConfirmBtn = document.getElementById("header-confirm-btn");
+    const headerSprintInfo = document.getElementById("header-sprint-info");
+
+    if (headerBackBtn) {
+      headerBackBtn.style.display = this.currentStep >= 2 ? "block" : "none";
+    }
+    if (headerConfirmBtn) {
+      headerConfirmBtn.style.display =
+        this.currentStep === 2 ? "block" : "none";
+    }
+    if (headerSprintInfo) {
+      if (this.currentStep >= 2) {
+        headerSprintInfo.style.display = "grid";
+      } else {
+        headerSprintInfo.style.display = "none";
+        headerSprintInfo.innerHTML = ""; // Clear content when hiding
+      }
+    }
   }
 
   showLoadingOverlay(message = "Processing...") {
@@ -1710,28 +1692,7 @@ Total Tickets: 4
 
 // Additional CSS for dynamic content
 const additionalStyles = `
-/* Sprint Info Card */
-.sprint-info-card {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-xl);
-    border: 1px solid var(--bg-tertiary);
-    margin-bottom: var(--space-lg);
-}
-
-.sprint-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-lg);
-}
-
-.sprint-name {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
+/* Sprint status badge */
 .sprint-status {
     padding: var(--space-xs) var(--space-md);
     border-radius: var(--radius-sm);
@@ -1745,91 +1706,37 @@ const additionalStyles = `
     border: 1px solid var(--accent-secondary);
 }
 
-.sprint-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-md);
-    margin-bottom: var(--space-lg);
-}
-
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-sm);
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
-}
-
-.detail-label {
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.detail-value {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.tickets-preview {
-    margin-top: var(--space-lg);
-}
-
-.preview-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: var(--space-md);
-    color: var(--text-primary);
-}
-
-.tickets-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-}
-
-.ticket-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-md);
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
-    border-left: 3px solid var(--accent-primary);
-}
-
-.ticket-key {
-    font-weight: 600;
-    color: var(--accent-primary);
-    min-width: 100px;
-}
-
-.ticket-summary {
-    flex: 1;
-    margin: 0 var(--space-md);
-    color: var(--text-primary);
-}
-
+/* Ticket status badges */
 .ticket-status {
     padding: var(--space-xs) var(--space-sm);
     border-radius: var(--radius-sm);
     font-size: 0.75rem;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .status-done {
     background: rgba(16, 185, 129, 0.2);
     color: var(--accent-secondary);
+    border: 1px solid var(--accent-secondary);
 }
 
 .status-in-progress {
     background: rgba(245, 158, 11, 0.2);
     color: var(--accent-warning);
+    border: 1px solid var(--accent-warning);
 }
 
 .status-to-do {
     background: rgba(107, 114, 128, 0.2);
     color: var(--text-secondary);
+    border: 1px solid var(--text-secondary);
+}
+
+.status-backlog {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-secondary);
+    border: 1px solid var(--text-secondary);
 }
 
 /* Validation Results */
@@ -1950,22 +1857,6 @@ const additionalStyles = `
 }
 
 @media (max-width: 768px) {
-    .sprint-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--space-sm);
-    }
-    
-    .sprint-details {
-        grid-template-columns: 1fr;
-    }
-    
-    .ticket-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--space-sm);
-    }
-    
     .summary-stats {
         grid-template-columns: 1fr;
     }
